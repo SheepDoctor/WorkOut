@@ -1,23 +1,35 @@
 <template>
   <div id="app">
-    <nav class="navbar">
+    <nav v-if="!isMusclePage" class="navbar">
       <div class="container">
         <h1 class="logo">💪 WorkOut</h1>
         <div class="nav-links">
           <router-link to="/" class="nav-link">抖音分析</router-link>
           <router-link to="/pose" class="nav-link">动作指导</router-link>
+          <router-link to="/muscle" class="nav-link">3D肌肉图</router-link>
         </div>
       </div>
     </nav>
-    <main class="main-content">
+    <main :class="['main-content', { 'fullscreen': isMusclePage }]">
       <router-view />
     </main>
   </div>
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
 export default {
-  name: 'App'
+  name: 'App',
+  setup() {
+    const route = useRoute()
+    const isMusclePage = computed(() => route.path === '/muscle')
+    
+    return {
+      isMusclePage
+    }
+  }
 }
 </script>
 
@@ -91,6 +103,12 @@ body {
   max-width: 1200px;
   margin: 2rem auto;
   padding: 0 2rem;
+}
+
+.main-content.fullscreen {
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
 }
 </style>
 
