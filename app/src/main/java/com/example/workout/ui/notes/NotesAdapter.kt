@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.workout.data.model.WorkoutNote
 import com.example.workout.databinding.ItemNoteBinding
 import java.text.SimpleDateFormat
 import java.util.*

@@ -10,6 +10,8 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.workout.R
+import com.example.workout.data.model.Exercise
 import com.example.workout.databinding.FragmentVideoAnalysisBinding
 import kotlinx.coroutines.launch
 

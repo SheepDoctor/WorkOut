@@ -2,6 +2,7 @@ package com.example.workout.ui.video
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.workout.data.model.Exercise
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -90,11 +91,4 @@ sealed class VideoAnalysisState {
     data class NoteGenerated(val noteId: String) : VideoAnalysisState()
     data class Error(val message: String) : VideoAnalysisState()
 }
-
-data class Exercise(
-    val name: String,
-    val steps: List<String>,
-    val keyPoints: List<String>,
-    val illustrationUrl: String
-)
 

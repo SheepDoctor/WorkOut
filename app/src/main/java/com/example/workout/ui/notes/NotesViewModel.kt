@@ -2,6 +2,7 @@ package com.example.workout.ui.notes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.workout.data.model.WorkoutNote
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,11 +27,4 @@ class NotesViewModel : ViewModel() {
         }
     }
 }
-
-data class WorkoutNote(
-    val id: String,
-    val title: String,
-    val exercises: List<Exercise>,
-    val createdAt: Long
-)
 

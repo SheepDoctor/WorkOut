@@ -9,6 +9,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.workout.data.model.WorkoutNote
 import com.example.workout.databinding.FragmentNoteDetailBinding
 import kotlinx.coroutines.launch
 

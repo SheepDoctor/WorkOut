@@ -71,7 +71,7 @@ class CameraCoachViewModel : ViewModel() {
         
         return PoseFeedback(
             message = if (feedback.isEmpty()) {
-                getString(R.string.good_form)
+                "动作标准"
             } else {
                 feedback.joinToString("\n")
             },
@@ -142,9 +142,9 @@ class CameraCoachViewModel : ViewModel() {
         
         return PoseFeedback(
             message = if (isGood) {
-                getString(R.string.good_form)
+                "动作标准"
             } else if (feedback.isEmpty()) {
-                getString(R.string.adjust_form)
+                "请调整动作"
             } else {
                 feedback.distinct().joinToString("\n")
             },
@@ -162,15 +162,6 @@ class CameraCoachViewModel : ViewModel() {
     
     fun setReferencePose(pose: Pose) {
         referencePose = pose
-    }
-    
-    private fun getString(resId: Int): String {
-        // In real implementation, use string resources properly
-        return when (resId) {
-            com.example.workout.R.string.good_form -> "动作标准"
-            com.example.workout.R.string.adjust_form -> "请调整动作"
-            else -> ""
-        }
     }
 }
 

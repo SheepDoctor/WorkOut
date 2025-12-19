@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.example.workout.R
 import com.example.workout.databinding.FragmentHomeBinding
 
 class HomeFragment : Fragment() {
