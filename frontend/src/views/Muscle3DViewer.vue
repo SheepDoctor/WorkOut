@@ -54,6 +54,7 @@ export default {
     let modelGroup
     let animationId = null
     let isDragging = false
+    let dragButton = 0 // 0: 左键, 2: 右键
     let previousMousePosition = { x: 0, y: 0 }
 
     // 扩展的肌肉数据
@@ -131,9 +132,19 @@ export default {
       window.addEventListener('resize', onWindowResize)
       
       renderer.domElement.addEventListener('mousedown', (e) => {
-        if(e.button === 0) isDragging = true
+        if(e.button === 0 || e.button === 2) {
+          isDragging = true
+          dragButton = e.button
+        }
       })
-      window.addEventListener('mouseup', () => isDragging = false)
+      window.addEventListener('mouseup', () => {
+        isDragging = false
+        dragButton = 0
+      })
+      // 阻止右键菜单
+      renderer.domElement.addEventListener('contextmenu', (e) => {
+        e.preventDefault()
+      })
       window.addEventListener('mousemove', handleMouseMove)
 
       // 滚轮缩放
@@ -221,13 +232,20 @@ export default {
     }
 
     function handleMouseMove(e) {
-      if(isDragging) {
+      if(isDragging && modelGroup) {
         const deltaMove = {
           x: e.offsetX - previousMousePosition.x,
           y: e.offsetY - previousMousePosition.y
         }
-        if (modelGroup) {
+        
+        if (dragButton === 0) {
+          // 左键：左右旋转（Y轴）
           modelGroup.rotation.y += deltaMove.x * 0.007
+        } else if (dragButton === 2) {
+          // 右键：上下平移（Y轴位置）
+          modelGroup.position.y -= deltaMove.y * 0.01
+          // 限制上下移动范围
+          modelGroup.position.y = Math.max(-1, Math.min(2, modelGroup.position.y))
         }
       }
       previousMousePosition = { x: e.offsetX, y: e.offsetY }
