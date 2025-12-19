@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/home">
+
+    <fragment
+        android:id="@+id/home"
+        android:name="com.example.workout.ui.home.HomeFragment"
+        android:label="@string/app_name"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_home_to_video_analysis"
+            app:destination="@id/video_analysis">
+            <argument
+                android:name="videoUri"
+                app:argType="string"
+                android:defaultValue="" />
+        </action>
+        <action
+            android:id="@+id/action_home_to_camera_coach"
+            app:destination="@id/camera_coach" />
+        <action
+            android:id="@+id/action_home_to_notes"
+            app:destination="@id/notes" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/video_analysis"
+        android:name="com.example.workout.ui.video.VideoAnalysisFragment"
+        android:label="@string/video_analysis"
+        tools:layout="@layout/fragment_video_analysis">
+        <argument
+            android:name="videoUri"
+            app:argType="string"
+            android:defaultValue="" />
+        <action
+            android:id="@+id/action_video_analysis_to_note_detail"
+            app:destination="@id/note_detail">
+            <argument
+                android:name="noteId"
+                app:argType="string" />
+        </action>
+    </fragment>
+
+    <fragment
+        android:id="@+id/camera_coach"
+        android:name="com.example.workout.ui.camera.CameraCoachFragment"
+        android:label="@string/camera_coach"
+        tools:layout="@layout/fragment_camera_coach" />
+
+    <fragment
+        android:id="@+id/notes"
+        android:name="com.example.workout.ui.notes.NotesFragment"
+        android:label="@string/my_notes"
+        tools:layout="@layout/fragment_notes">
+        <action
+            android:id="@+id/action_notes_to_note_detail"
+            app:destination="@id/note_detail">
+            <argument
+                android:name="noteId"
+                app:argType="string" />
+        </action>
+    </fragment>
+
+    <fragment
+        android:id="@+id/note_detail"
+        android:name="com.example.workout.ui.notes.NoteDetailFragment"
+        android:label="@string/my_notes"
+        tools:layout="@layout/fragment_note_detail">
+        <argument
+            android:name="noteId"
+            app:argType="string" />
+    </fragment>
+
+</navigation>
+
