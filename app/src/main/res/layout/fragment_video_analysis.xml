@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@android:drawable/ic_menu_revert"
+            app:navigationIcon="@drawable/ic_back"
             app:title="@string/video_analysis" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -54,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/analyze_video"
-                app:icon="@android:drawable/ic_menu_search"
+                app:icon="@drawable/ic_search"
                 app:iconGravity="textStart" />
 
             <ProgressBar
@@ -82,7 +82,7 @@
                 android:layout_marginTop="24dp"
                 android:enabled="false"
                 android:text="@string/generate_note"
-                app:icon="@android:drawable/ic_menu_edit"
+                app:icon="@drawable/ic_edit"
                 app:iconGravity="textStart" />
 
         </LinearLayout>

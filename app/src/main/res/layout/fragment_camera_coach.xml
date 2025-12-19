@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@android:drawable/ic_menu_revert"
+            app:navigationIcon="@drawable/ic_back"
             app:title="@string/camera_coach" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -70,7 +70,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/start_coaching"
-                app:icon="@android:drawable/ic_menu_camera"
+                app:icon="@drawable/ic_camera"
                 app:iconGravity="textStart" />
 
             <com.google.android.material.button.MaterialButton
@@ -81,7 +81,7 @@
                 android:layout_marginTop="8dp"
                 android:visibility="gone"
                 android:text="@string/stop_coaching"
-                app:icon="@android:drawable/ic_menu_close_clear_cancel"
+                app:icon="@drawable/ic_close"
                 app:iconGravity="textStart" />
 
         </LinearLayout>

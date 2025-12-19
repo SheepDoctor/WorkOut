@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme - Apple Style -->
     <style name="Theme.WorkOut" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary</item>
@@ -7,15 +7,22 @@
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/secondary</item>
         <item name="colorOnSecondary">@color/on_secondary</item>
-        <!-- Background color. -->
+        <!-- Background color - Apple Style -->
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/on_surface</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/primary</item>
+        <!-- Status bar color - Apple Style (transparent/light) -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
         <!-- Navigation bar -->
-        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <!-- Button style -->
+        <item name="materialButtonStyle">@style/Widget.Material3.Button</item>
         <!-- Customize your theme here. -->
+    </style>
+    
+    <!-- AppBar Overlay Style -->
+    <style name="Theme.WorkOut.AppBarOverlay" parent="ThemeOverlay.Material3.Dark">
+        <item name="android:textColorPrimary">@color/text_primary</item>
     </style>
 </resources>
