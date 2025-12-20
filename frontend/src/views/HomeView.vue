@@ -34,19 +34,21 @@
               <button @click="showHistory = true" class="text-slate-400 hover:text-white transition-colors">
                   <i class="fa-solid fa-clock-rotate-left"></i>
               </button>
-              <button v-if="exercises.length > 0" @click="clearWorkout" class="text-slate-400 hover:text-white transition-colors" title="返回初始界面">
-                  <i class="fa-solid fa-house"></i>
-              </button>
-              <div class="flex gap-1.5" v-if="exercises.length > 0">
+              <div class="flex gap-1.5">
                   <div v-for="(_, i) in exercises" :key="i"
                        :class="['h-1 rounded-full transition-all duration-300', 
                                 i === currentIndex ? 'w-8 bg-blue-500' : (i < currentIndex ? 'w-4 bg-emerald-500' : 'w-4 bg-slate-700')]">
                   </div>
               </div>
           </div>
-          <span class="text-xs font-mono text-slate-500" v-if="exercises.length">
-              动作 {{ currentIndex + 1 }} / {{ exercises.length }}
-          </span>
+          <div class="flex items-center gap-3">
+              <router-link to="/achievements" class="text-slate-400 hover:text-yellow-400 transition-colors relative" title="荣誉殿堂">
+                  <i class="fa-solid fa-medal"></i>
+              </router-link>
+              <span class="text-xs font-mono text-slate-500" v-if="exercises.length">
+                  动作 {{ currentIndex + 1 }} / {{ exercises.length }}
+              </span>
+          </div>
       </header>
 
       <!-- 历史记录侧边栏 -->
@@ -1371,23 +1373,6 @@ export default {
       evaluationProgress.value = 0;
     };
 
-    const clearWorkout = () => {
-      if (cameraActive.value) {
-        stopCamera('interrupted');
-      }
-      exercises.value = [];
-      currentIndex.value = 0;
-      currentWorkoutId.value = null;
-      showSummary.value = false;
-      evaluationResult.value = null;
-      uploadingEvaluation.value = false;
-      evaluationProgress.value = 0;
-      exerciseHistory.value = [];
-      feedback.value = [];
-      annotatedImage.value = null;
-      reps.value = 0;
-    };
-
     // 手势监听
     let touchStartX = 0;
     const handleTouchStart = (e) => touchStartX = e.touches[0].clientX;
@@ -1417,7 +1402,7 @@ export default {
       history, showHistory, exerciseHistory,
       cameraActive, analyzing, error, feedback, annotatedImage, reps, poseState, videoElement,
       startCamera, stopCamera, getPoseStateText,
-      incrementProgress, next, prev, parseTips, resetWorkout, clearWorkout,
+      incrementProgress, next, prev, parseTips, resetWorkout,
       handleTouchStart, handleTouchEnd, handleVideoUpload,
       fetchHistory, saveCurrentWorkout, loadWorkout, deleteHistoryItem, deleteLog, formatDate,
       editingId, editingTitle, startEdit, cancelEdit, saveEdit,
