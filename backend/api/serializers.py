@@ -53,56 +53,113 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
     
     def to_representation(self, instance):
         """自定义序列化，确保 JSONField 正确序列化"""
+        log_id = getattr(instance, "id", "unknown")
+        print(f'[WorkoutLogSerializer] ========== 序列化日志 ID: {log_id} ==========')
         try:
             # 检查实例是否有效
             if instance is None:
+                print('[WorkoutLogSerializer] ⚠ 实例为 None')
                 return None
             
             # 尝试获取基本数据
-            data = super().to_representation(instance)
+            print(f'[WorkoutLogSerializer] 步骤1: 调用父类序列化...')
+            try:
+                data = super().to_representation(instance)
+                print(f'[WorkoutLogSerializer] ✓ 基础序列化成功，字段数: {len(data)}')
+            except Exception as e:
+                print(f'[WorkoutLogSerializer] ✗ 基础序列化失败: {e}')
+                import traceback
+                traceback.print_exc()
+                # 如果基础序列化失败，手动构建
+                print('[WorkoutLogSerializer] 尝试手动构建数据...')
+                data = {}
             
             # 确保 JSONField 字段正确序列化
+            print(f'[WorkoutLogSerializer] 步骤2: 处理 set_feedback...')
             if hasattr(instance, 'set_feedback'):
-                if instance.set_feedback is None:
-                    data['set_feedback'] = None
-                elif isinstance(instance.set_feedback, (dict, list)):
-                    data['set_feedback'] = instance.set_feedback
-                else:
-                    # 如果是字符串，尝试解析
-                    import json
-                    try:
-                        data['set_feedback'] = json.loads(instance.set_feedback) if isinstance(instance.set_feedback, str) else instance.set_feedback
-                    except:
+                try:
+                    if instance.set_feedback is None:
                         data['set_feedback'] = None
+                    elif isinstance(instance.set_feedback, (dict, list)):
+                        data['set_feedback'] = instance.set_feedback
+                    else:
+                        # 如果是字符串，尝试解析
+                        import json
+                        try:
+                            data['set_feedback'] = json.loads(instance.set_feedback) if isinstance(instance.set_feedback, str) else instance.set_feedback
+                        except:
+                            data['set_feedback'] = None
+                except Exception as e:
+                    print(f'[WorkoutLogSerializer] ⚠ set_feedback 处理失败: {e}')
+                    data['set_feedback'] = None
+            else:
+                data['set_feedback'] = None
             
+            print(f'[WorkoutLogSerializer] 步骤3: 处理 data_snapshot...')
             if hasattr(instance, 'data_snapshot'):
-                if instance.data_snapshot is None:
-                    data['data_snapshot'] = None
-                elif isinstance(instance.data_snapshot, (dict, list)):
-                    data['data_snapshot'] = instance.data_snapshot
-                else:
-                    # 如果是字符串，尝试解析
-                    import json
-                    try:
-                        data['data_snapshot'] = json.loads(instance.data_snapshot) if isinstance(instance.data_snapshot, str) else instance.data_snapshot
-                    except:
+                try:
+                    if instance.data_snapshot is None:
                         data['data_snapshot'] = None
+                    elif isinstance(instance.data_snapshot, (dict, list)):
+                        data['data_snapshot'] = instance.data_snapshot
+                    else:
+                        # 如果是字符串，尝试解析
+                        import json
+                        try:
+                            data['data_snapshot'] = json.loads(instance.data_snapshot) if isinstance(instance.data_snapshot, str) else instance.data_snapshot
+                        except:
+                            data['data_snapshot'] = None
+                except Exception as e:
+                    print(f'[WorkoutLogSerializer] ⚠ data_snapshot 处理失败: {e}')
+                    data['data_snapshot'] = None
+            else:
+                data['data_snapshot'] = None
             
+            # 确保 start_time 正确序列化
+            print(f'[WorkoutLogSerializer] 步骤4: 处理 start_time...')
+            if 'start_time' in data:
+                try:
+                    if data['start_time'] is None:
+                        data['start_time'] = None
+                    # 如果已经是字符串，保持不变
+                    elif isinstance(data['start_time'], str):
+                        pass
+                    # 如果是 datetime 对象，转换为 ISO 格式
+                    elif hasattr(data['start_time'], 'isoformat'):
+                        data['start_time'] = data['start_time'].isoformat()
+                    # 如果是其他类型，尝试转换
+                    else:
+                        data['start_time'] = str(data['start_time'])
+                except Exception as e:
+                    print(f'[WorkoutLogSerializer] ⚠ start_time 处理失败: {e}')
+                    data['start_time'] = None
+            
+            print(f'[WorkoutLogSerializer] ✓ 序列化完成，字段数: {len(data)}')
             return data
         except Exception as e:
             import traceback
+            print(f'[WorkoutLogSerializer] ✗ 序列化错误: {e}')
             traceback.print_exc()
-            print(f"Error in WorkoutLogSerializer.to_representation: {e}")
             # 返回基本字段，避免完全失败
             try:
                 # 尝试手动构建基本字段
+                start_time_str = None
+                if hasattr(instance, 'start_time') and instance.start_time:
+                    try:
+                        if hasattr(instance.start_time, 'isoformat'):
+                            start_time_str = instance.start_time.isoformat()
+                        else:
+                            start_time_str = str(instance.start_time)
+                    except:
+                        start_time_str = None
+                
                 return {
-                    'id': instance.id,
+                    'id': getattr(instance, 'id', None),
                     'plan_title': getattr(instance, 'plan_title', ''),
                     'action_name': getattr(instance, 'action_name', None),
                     'set_index': getattr(instance, 'set_index', None),
                     'reps_count': getattr(instance, 'reps_count', 0),
-                    'start_time': instance.start_time.isoformat() if hasattr(instance, 'start_time') and instance.start_time else None,
+                    'start_time': start_time_str,
                     'duration': getattr(instance, 'duration', 0),
                     'exercise_id': getattr(instance, 'exercise_id', None),
                     'target_reps': getattr(instance, 'target_reps', None),
@@ -115,7 +172,8 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
                 }
             except Exception as e2:
                 # 如果连基本字段都获取失败，返回最小信息
+                print(f'[WorkoutLogSerializer] ✗ 手动构建也失败: {e2}')
                 return {
-                    'id': instance.id if hasattr(instance, 'id') else None,
+                    'id': getattr(instance, 'id', None) if hasattr(instance, 'id') else None,
                     'error': f'Serialization error: {str(e)}'
                 }

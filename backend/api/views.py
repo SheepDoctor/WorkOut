@@ -1,22 +1,14 @@
 import re
 import requests
-import os
-import tempfile
-import uuid
-from django.conf import settings
 from bs4 import BeautifulSoup
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
 import json
 import cv2
 import mediapipe as mp
 import numpy as np
-from django.http import JsonResponse
 import base64
-from .utils.video_analyzer import VideoAnalyzer
-from .utils.coach_agent import CoachAgent
 from .utils.action_classifier import detect_action, ACTION_CATEGORIES
 from .models import WorkoutPlan, WorkoutLog
 
@@ -41,31 +33,108 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutLogSerializer
     
     def get_queryset(self):
+        print('[WorkoutLogViewSet.get_queryset] ========== 构建查询集 ==========')
         try:
+            print('[WorkoutLogViewSet.get_queryset] 步骤1: 获取所有日志...')
             queryset = WorkoutLog.objects.all()
+            
+            print('[WorkoutLogViewSet.get_queryset] 步骤2: 计算初始数量...')
+            try:
+                initial_count = queryset.count()
+                print(f'[WorkoutLogViewSet.get_queryset] 初始查询集数量: {initial_count}')
+            except Exception as count_error:
+                print(f'[WorkoutLogViewSet.get_queryset] ⚠ 计算数量时出错: {count_error}')
+                # 继续执行，不因为计数失败而中断
+            
             # 支持按 exercise_id 过滤
             exercise_id = self.request.query_params.get('exercise_id', None)
             if exercise_id:
-                queryset = queryset.filter(exercise_id=exercise_id)
+                print(f'[WorkoutLogViewSet.get_queryset] 步骤3: 按 exercise_id 过滤: {exercise_id}')
+                try:
+                    queryset = queryset.filter(exercise_id=exercise_id)
+                    filtered_count = queryset.count()
+                    print(f'[WorkoutLogViewSet.get_queryset] 过滤后数量: {filtered_count}')
+                except Exception as filter_error:
+                    print(f'[WorkoutLogViewSet.get_queryset] ⚠ exercise_id 过滤失败: {filter_error}')
+                    # 如果过滤失败，返回空查询集
+                    return WorkoutLog.objects.none()
+            
             # 支持按 action_name 过滤
             action_name = self.request.query_params.get('action_name', None)
             if action_name:
-                queryset = queryset.filter(action_name=action_name)
+                print(f'[WorkoutLogViewSet.get_queryset] 步骤4: 按 action_name 过滤: {action_name}')
+                try:
+                    queryset = queryset.filter(action_name=action_name)
+                    filtered_count = queryset.count()
+                    print(f'[WorkoutLogViewSet.get_queryset] 过滤后数量: {filtered_count}')
+                except Exception as filter_error:
+                    print(f'[WorkoutLogViewSet.get_queryset] ⚠ action_name 过滤失败: {filter_error}')
+                    # 如果过滤失败，返回空查询集
+                    return WorkoutLog.objects.none()
+            
             # 默认按时间倒序
-            return queryset.order_by('-start_time')
+            print('[WorkoutLogViewSet.get_queryset] 步骤5: 按时间排序...')
+            try:
+                queryset = queryset.order_by('-start_time')
+                final_count = queryset.count()
+                print(f'[WorkoutLogViewSet.get_queryset] ✓ 查询集构建完成，最终数量: {final_count}')
+            except Exception as order_error:
+                print(f'[WorkoutLogViewSet.get_queryset] ⚠ 排序失败: {order_error}')
+                # 如果排序失败，尝试不排序
+                print('[WorkoutLogViewSet.get_queryset] 尝试不排序返回...')
+                final_count = queryset.count()
+                print(f'[WorkoutLogViewSet.get_queryset] ✓ 查询集构建完成（无排序），最终数量: {final_count}')
+            
+            return queryset
         except Exception as e:
             import traceback
+            print(f'[WorkoutLogViewSet.get_queryset] ✗ 严重错误: {e}')
             traceback.print_exc()
-            print(f"Error in get_queryset: {e}")
             return WorkoutLog.objects.none()
     
     def list(self, request, *args, **kwargs):
+        print('[WorkoutLogViewSet] ========== 获取训练日志列表 ==========')
+        print(f'[WorkoutLogViewSet] 请求参数: {request.query_params}')
         try:
-            return super().list(request, *args, **kwargs)
+            # 获取查询集
+            print('[WorkoutLogViewSet] 步骤1: 获取查询集...')
+            queryset = self.get_queryset()
+            print('[WorkoutLogViewSet] 步骤2: 计算查询集数量...')
+            queryset_count = queryset.count()
+            print(f'[WorkoutLogViewSet] 查询集数量: {queryset_count}')
+            
+            # 序列化 - 逐个处理以避免单个记录导致全部失败
+            print('[WorkoutLogViewSet] 步骤3: 开始序列化...')
+            serializer = self.get_serializer(queryset, many=True)
+            print('[WorkoutLogViewSet] 步骤4: 序列化完成，检查数据...')
+            
+            # 验证序列化数据
+            serialized_data = serializer.data
+            print(f'[WorkoutLogViewSet] 序列化完成，数据条数: {len(serialized_data)}')
+            
+            # 检查序列化数据是否有问题
+            for idx, item in enumerate(serialized_data):
+                if idx < 3:  # 只打印前3条
+                    print(f'[WorkoutLogViewSet] 日志 {idx}: id={item.get("id")}, action_name={item.get("action_name")}, status={item.get("status")}')
+            
+            print('[WorkoutLogViewSet] ✓ 成功返回数据')
+            return Response(serialized_data, status=status.HTTP_200_OK)
         except Exception as e:
             import traceback
+            error_msg = str(e)
+            error_type = type(e).__name__
+            print(f'[WorkoutLogViewSet] ✗ 错误类型: {error_type}')
+            print(f'[WorkoutLogViewSet] ✗ 错误消息: {error_msg}')
+            print('[WorkoutLogViewSet] 完整堆栈:')
             traceback.print_exc()
-            return Response({"error": str(e)}, status=500)
+            
+            # 返回详细的错误信息
+            error_response = {
+                "error": error_msg,
+                "error_type": error_type,
+                "detail": "获取训练日志列表时发生错误，请查看后端日志获取详细信息"
+            }
+            return Response(error_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def destroy(self, request, *args, **kwargs):
         """删除训练记录"""
@@ -78,77 +147,6 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             print(f"Error in destroy: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def analyze_video_content(request):
-    """
-    分析上传的视频，提取健身动作
-    """
-    try:
-        video_file = request.FILES.get('video')
-        if not video_file:
-            return Response({
-                'success': False,
-                'error': '请上传视频文件'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 确保媒体目录存在
-        gif_dir = os.path.join(settings.MEDIA_ROOT, 'workout_gifs')
-        if not os.path.exists(gif_dir):
-            os.makedirs(gif_dir)
-
-        # 保存临时文件
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
-            for chunk in video_file.chunks():
-                temp_video.write(chunk)
-            temp_video_path = temp_video.name
-
-        try:
-            analyzer = VideoAnalyzer()
-            workout_data = analyzer.analyze_video(temp_video_path)
-            
-            if workout_data:
-                # 为每个动作生成 GIF
-                exercises = workout_data.get('exercises', [])
-                for exercise in exercises:
-                    start_time = exercise.get('start_time', '00:00')
-                    end_time = exercise.get('end_time', '00:05')
-                    
-                    # 生成唯一的 GIF 文件名
-                    gif_filename = f"ex_{uuid.uuid4().hex[:8]}.gif"
-                    gif_path = os.path.join(gif_dir, gif_filename)
-                    
-                    if analyzer.create_gif(temp_video_path, start_time, end_time, gif_path):
-                        # 记录 GIF 的相对 URL
-                        exercise['gif_url'] = request.build_absolute_uri(settings.MEDIA_URL + 'workout_gifs/' + gif_filename)
-                
-                return Response({
-                    'success': True,
-                    'data': workout_data
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    'success': False,
-                    'error': '视频分析失败，请稍后重试'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        finally:
-            if os.path.exists(temp_video_path):
-                import time
-                time.sleep(0.2) # 给 Windows 一点时间释放句柄
-                try:
-                    os.remove(temp_video_path)
-                except Exception as e:
-                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()  # 打印详细堆栈到终端
-        return Response({
-            'success': False,
-            'error': f'服务器内部错误: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 @api_view(['POST'])
 def analyze_douyin(request):
@@ -280,33 +278,52 @@ def analyze_pose(request):
     """
     分析用户动作，提供AI指导
     """
+    import time
+    start_time = time.time()
+    print('[AnalyzePose] ========== 收到姿态分析请求 ==========')
+    
     try:
         image_data = request.data.get('image', '')
         exercise_type = request.data.get('exercise_type', 'general') # 获取动作类型
         
+        print(f'[AnalyzePose] 动作类型: {exercise_type}')
+        print(f'[AnalyzePose] 图像数据长度: {len(image_data) if image_data else 0} 字符')
+        
         if not image_data:
+            print('[AnalyzePose] ✗ 错误: 未提供图像数据')
             return Response({
                 'success': False,
                 'error': '请提供图像数据'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # 解码base64图像
+        decode_start = time.time()
         try:
             # 移除data:image/jpeg;base64,前缀（如果存在）
             if ',' in image_data:
                 image_data = image_data.split(',')[1]
             
             image_bytes = base64.b64decode(image_data)
+            print(f'[AnalyzePose] Base64解码完成，图像字节数: {len(image_bytes)}')
+            
             nparr = np.frombuffer(image_bytes, np.uint8)
             image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
             if image is None:
+                print('[AnalyzePose] ✗ 错误: 无法解码图像')
                 return Response({
                     'success': False,
                     'error': '无法解码图像'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
+            decode_duration = time.time() - decode_start
+            print(f'[AnalyzePose] ✓ 图像解码成功，耗时: {decode_duration*1000:.2f}ms')
+            print(f'[AnalyzePose] 图像尺寸: {image.shape[1]}x{image.shape[0]}')
+            
         except Exception as e:
+            print(f'[AnalyzePose] ✗ 图像解码失败: {str(e)}')
+            import traceback
+            traceback.print_exc()
             return Response({
                 'success': False,
                 'error': f'图像解码失败: {str(e)}'
@@ -314,10 +331,14 @@ def analyze_pose(request):
         
         # 获取当前线程的 Pose 检测器
         pose_detector = get_pose_detector()
+        print('[AnalyzePose] Pose检测器已获取')
         
         # 转换BGR到RGB
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        process_start = time.time()
         results = pose_detector.process(image_rgb)
+        process_duration = time.time() - process_start
+        print(f'[AnalyzePose] MediaPipe处理完成，耗时: {process_duration*1000:.2f}ms')
         
         # 准备返回数据
         feedback = []
@@ -330,6 +351,7 @@ def analyze_pose(request):
         # 检测是否检测到人体
         if results.pose_landmarks:
             landmarks_detected = True
+            print(f'[AnalyzePose] ✓ 检测到人体姿态，关键点数量: {len(results.pose_landmarks.landmark)}')
             
             # 提取关键点
             landmarks = results.pose_landmarks.landmark
@@ -344,49 +366,75 @@ def analyze_pose(request):
             # )
 
             # 根据动作类型进行分析
+            analyze_start = time.time()
             if exercise_type in ACTION_CATEGORIES:
+                print(f'[AnalyzePose] 使用动作分类器分析: {exercise_type}')
                 state, val, msg = detect_action(exercise_type, landmarks, mp_pose)
                 if state:
                     pose_state = state
                     pose_angle = val
                     feedback.append({'type': 'info', 'message': msg})
+                    print(f'[AnalyzePose] ✓ 动作检测成功 - 状态: {pose_state}, 角度: {pose_angle:.2f}°, 消息: {msg}')
                 else:
                     feedback.append({'type': 'warning', 'message': msg})
+                    print(f'[AnalyzePose] ⚠ 动作检测失败 - 消息: {msg}')
             elif exercise_type == 'squat':
+                print(f'[AnalyzePose] 使用深蹲检测器')
                 state, angle, msg = detect_squat(landmarks)
                 if state:
                     pose_state = state
                     pose_angle = angle
                     feedback.append({'type': 'info', 'message': msg})
+                    print(f'[AnalyzePose] ✓ 深蹲检测成功 - 状态: {pose_state}, 角度: {pose_angle:.2f}°, 消息: {msg}')
                 else:
                     feedback.append({'type': 'warning', 'message': msg})
+                    print(f'[AnalyzePose] ⚠ 深蹲检测失败 - 消息: {msg}')
                     
             elif exercise_type == 'curl':
+                print(f'[AnalyzePose] 使用弯举检测器')
                 state, angle, msg = detect_curl(landmarks)
                 if state:
                     pose_state = state
                     pose_angle = angle
                     feedback.append({'type': 'info', 'message': msg})
+                    print(f'[AnalyzePose] ✓ 弯举检测成功 - 状态: {pose_state}, 角度: {pose_angle:.2f}°, 消息: {msg}')
                 else:
                     feedback.append({'type': 'warning', 'message': msg})
+                    print(f'[AnalyzePose] ⚠ 弯举检测失败 - 消息: {msg}')
                     
             elif exercise_type == 'press':
+                print(f'[AnalyzePose] 使用推举检测器')
                 state, angle, msg = detect_press(landmarks)
                 if state:
                     pose_state = state
                     pose_angle = angle
                     feedback.append({'type': 'info', 'message': msg})
+                    print(f'[AnalyzePose] ✓ 推举检测成功 - 状态: {pose_state}, 角度: {pose_angle:.2f}°, 消息: {msg}')
                 else:
                     feedback.append({'type': 'warning', 'message': msg})
+                    print(f'[AnalyzePose] ⚠ 推举检测失败 - 消息: {msg}')
             
             else: # general
+                print(f'[AnalyzePose] 使用通用姿态质量分析')
                 feedback = analyze_pose_quality(landmarks, image.shape)
+                print(f'[AnalyzePose] ✓ 通用分析完成，反馈数量: {len(feedback)}')
+            
+            analyze_duration = time.time() - analyze_start
+            print(f'[AnalyzePose] 动作分析耗时: {analyze_duration*1000:.2f}ms')
         else:
+            print('[AnalyzePose] ⚠ 未检测到人体姿态')
             feedback.append({'type': 'warning', 'message': '未检测到人体，请调整站位'})
 
         # 无论是否检测到，都返回图像，确保前端画面流畅
+        encode_start = time.time()
         _, buffer = cv2.imencode('.jpg', annotated_image)
         annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
+        encode_duration = time.time() - encode_start
+        print(f'[AnalyzePose] 图像编码完成，耗时: {encode_duration*1000:.2f}ms')
+        
+        total_duration = time.time() - start_time
+        print(f'[AnalyzePose] ========== 分析完成，总耗时: {total_duration*1000:.2f}ms ==========')
+        print(f'[AnalyzePose] 返回数据 - 状态: {pose_state}, 角度: {pose_angle:.2f}°, 反馈数: {len(feedback)}')
         
         return Response({
             'success': True,
@@ -401,6 +449,11 @@ def analyze_pose(request):
         }, status=status.HTTP_200_OK)
             
     except Exception as e:
+        total_duration = time.time() - start_time
+        print(f'[AnalyzePose] ✗ 错误: {str(e)}')
+        print(f'[AnalyzePose] 错误发生前耗时: {total_duration*1000:.2f}ms')
+        import traceback
+        traceback.print_exc()
         return Response({
             'success': False,
             'error': f'姿态分析失败: {str(e)}'
@@ -683,311 +736,3 @@ def detect_press(landmarks):
     return state, avg_angle, feedback
 
 
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def save_training_video(request):
-    """
-    保存训练视频到临时目录
-    请求参数：
-    - video: 训练视频文件
-    - plan_id: 训练计划ID（可选）
-    - session_id: 训练会话ID（可选，用于标识本次训练）
-    """
-    try:
-        video_file = request.FILES.get('video')
-        plan_id = request.data.get('plan_id')
-        session_id = request.data.get('session_id')
-
-        if not video_file:
-            return Response({
-                'success': False,
-                'error': '请上传训练视频文件'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 确保临时目录存在
-        tmp_dir = os.path.join(settings.MEDIA_ROOT, 'tmp')
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        # 生成唯一的文件名
-        import uuid
-        file_extension = os.path.splitext(video_file.name)[1]
-        unique_filename = f"training_{uuid.uuid4().hex[:8]}{file_extension}"
-        tmp_video_path = os.path.join(tmp_dir, unique_filename)
-
-        # 保存视频文件
-        with open(tmp_video_path, 'wb+') as destination:
-            for chunk in video_file.chunks():
-                destination.write(chunk)
-
-        # 生成可访问的URL
-        video_url = request.build_absolute_uri(settings.MEDIA_URL + f'tmp/{unique_filename}')
-
-        return Response({
-            'success': True,
-            'data': {
-                'video_path': tmp_video_path,
-                'video_url': video_url,
-                'filename': unique_filename,
-                'plan_id': plan_id,
-                'session_id': session_id
-            }
-        }, status=status.HTTP_200_OK)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            'success': False,
-            'error': f'保存视频失败: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def evaluate_complete_training(request):
-    """
-    评价完整的训练视频，给出AI综合反馈
-    请求参数：
-    - video: 训练视频文件（可选，如果提供了video_path则不需要）
-    - video_path: 已保存的视频路径（可选，用于使用已保存的视频）
-    - workout_plan: 训练计划信息（JSON字符串，包含所有动作信息）
-    - plan_id: 训练计划ID（可选，用于关联）
-    - training_status: 训练状态（'completed' 或 'interrupted'），只有 completed 的训练才会被分析
-    """
-    try:
-        video_file = request.FILES.get('video')
-        video_path = request.data.get('video_path')
-        workout_plan_str = request.data.get('workout_plan', '[]')
-        plan_id = request.data.get('plan_id')
-        session_id = request.data.get('session_id')
-        training_status = request.data.get('training_status', 'completed')  # 默认 completed
-        
-        # 检查训练状态，只有完成的训练才进行分析
-        if training_status != 'completed':
-            # 如果没有明确传递状态，尝试从最近的训练记录中查找
-            if plan_id:
-                try:
-                    plan = WorkoutPlan.objects.get(id=plan_id)
-                    # 查找该计划下最近的训练记录
-                    recent_log = WorkoutLog.objects.filter(
-                        plan_title=plan.title
-                    ).order_by('-start_time').first()
-                    
-                    # 如果最近的记录是中断的，拒绝分析
-                    if recent_log and recent_log.status != 'completed':
-                        return Response({
-                            'success': False,
-                            'error': '训练已中断，不进行AI分析'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                except WorkoutPlan.DoesNotExist:
-                    pass
-            else:
-                # 没有 plan_id 且状态不是 completed，直接拒绝
-                return Response({
-                    'success': False,
-                    'error': '训练已中断，不进行AI分析'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 确定视频路径
-        if video_path:
-            # 使用已保存的视频路径
-            temp_video_path = video_path
-            if not os.path.exists(temp_video_path):
-                return Response({
-                    'success': False,
-                    'error': '指定的视频文件不存在'
-                }, status=status.HTTP_400_BAD_REQUEST)
-        elif video_file:
-            # 保存新上传的视频文件
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
-                for chunk in video_file.chunks():
-                    temp_video.write(chunk)
-                temp_video_path = temp_video.name
-        else:
-            return Response({
-                'success': False,
-                'error': '请提供视频文件或视频路径'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 解析训练计划
-        try:
-            workout_plan = json.loads(workout_plan_str) if workout_plan_str else []
-        except json.JSONDecodeError:
-            return Response({
-                'success': False,
-                'error': '训练计划数据格式错误'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # 调用CoachAgent进行综合评价
-            coach = CoachAgent()
-            feedback_data = coach.analyze_complete_training(
-                temp_video_path,
-                workout_plan
-            )
-
-            # 添加计划相关信息
-            feedback_data['plan_id'] = plan_id
-            feedback_data['session_id'] = session_id
-
-            # 保存 AI 评价到 WorkoutLog（只更新 ai_score 和 ai_feedback）
-            # 查找最近的已完成训练记录进行更新
-            workout_log = None
-            if plan_id:
-                try:
-                    plan = WorkoutPlan.objects.get(id=plan_id)
-                    # 查找该计划下最近一条已完成的训练记录
-                    workout_log = WorkoutLog.objects.filter(
-                        plan_title=plan.title,
-                        status='completed'
-                    ).order_by('-start_time').first()
-                except WorkoutPlan.DoesNotExist:
-                    pass
-
-            # 如果找到现有记录，只更新 AI 评价字段（不修改其他字段）
-            if workout_log:
-                workout_log.ai_score = feedback_data.get('score', 0)
-                workout_log.ai_feedback = feedback_data.get('improvement_advice', '') + "\n\n" + feedback_data.get('coach_comment', '')
-                workout_log.save(update_fields=['ai_score', 'ai_feedback'])
-                feedback_data['log_id'] = workout_log.id
-            # 如果没有找到现有记录，不创建新记录（只返回评价结果，不保存到数据库）
-
-            return Response({
-                'success': True,
-                'data': feedback_data
-            }, status=status.HTTP_200_OK)
-
-        finally:
-            # 只清理临时文件，不清理已保存的文件
-            if video_file and temp_video_path and os.path.exists(temp_video_path):
-                import time
-                time.sleep(0.2)  # 给Windows一点时间释放句柄
-                try:
-                    os.remove(temp_video_path)
-                except Exception as e:
-                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            'success': False,
-            'error': f'服务器内部错误: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(['POST'])
-@parser_classes([MultiPartParser, FormParser])
-def evaluate_training_video(request):
-    """
-    评价用户的训练视频，给出AI反馈并保存到数据库
-    请求参数：
-    - video: 训练视频文件
-    - action_id: 动作ID
-    - action_name: 动作名称
-    - action_tips: 动作要领（用分号分隔）
-    - log_id: 训练记录ID（可选，如果提供则更新该记录）
-    - set_index: 组数索引（可选，用于记录是第几组）
-    """
-    try:
-        video_file = request.FILES.get('video')
-        action_id = request.data.get('action_id')
-        action_name = request.data.get('action_name', '')
-        action_tips = request.data.get('action_tips', '')
-        log_id = request.data.get('log_id')
-        set_index = request.data.get('set_index')
-
-        if not video_file:
-            return Response({
-                'success': False,
-                'error': '请上传训练视频文件'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if not action_id:
-            return Response({
-                'success': False,
-                'error': '请提供动作ID'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # 保存临时视频文件
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
-            for chunk in video_file.chunks():
-                temp_video.write(chunk)
-            temp_video_path = temp_video.name
-
-        try:
-            # 调用CoachAgent进行评价
-            coach = CoachAgent()
-            feedback_data = coach.analyze_form(
-                temp_video_path,
-                action_name,
-                action_tips
-            )
-
-            # 添加动作相关信息
-            feedback_data['action_id'] = int(action_id)
-            feedback_data['action_name'] = action_name
-
-            # 如果提供了log_id，更新训练记录
-            if log_id:
-                try:
-                    workout_log = WorkoutLog.objects.get(id=log_id)
-
-                    # 初始化set_feedback字段（如果不存在）
-                    if workout_log.set_feedback is None:
-                        workout_log.set_feedback = []
-
-                    # 构建反馈对象
-                    set_feedback_item = {
-                        'action_id': int(action_id),
-                        'action_name': action_name,
-                        'set_index': int(set_index) if set_index else len(workout_log.set_feedback),
-                        'score': feedback_data.get('score', 0),
-                        'is_standard': feedback_data.get('is_standard', False),
-                        'detected_errors': feedback_data.get('detected_errors', []),
-                        'improvement_advice': feedback_data.get('improvement_advice', ''),
-                        'coach_comment': feedback_data.get('coach_comment', ''),
-                        'timestamp': str(workout_log.start_time) if hasattr(workout_log, 'start_time') else ''
-                    }
-
-                    # 添加到set_feedback数组
-                    workout_log.set_feedback.append(set_feedback_item)
-
-                    # 更新整体评分（取所有组的平均分）
-                    if workout_log.set_feedback:
-                        total_score = sum(item.get('score', 0) for item in workout_log.set_feedback)
-                        workout_log.ai_score = total_score / len(workout_log.set_feedback)
-
-                    # 更新AI反馈（合并所有组的建议）
-                    all_advice = [item.get('improvement_advice', '') for item in workout_log.set_feedback if item.get('improvement_advice')]
-                    workout_log.ai_feedback = '\n'.join(all_advice) if all_advice else None
-
-                    workout_log.save()
-
-                except WorkoutLog.DoesNotExist:
-                    # 如果log_id不存在，仍然返回反馈，但不保存到数据库
-                    pass
-
-            return Response({
-                'success': True,
-                'data': feedback_data
-            }, status=status.HTTP_200_OK)
-
-        finally:
-            # 清理临时文件
-            if os.path.exists(temp_video_path):
-                import time
-                time.sleep(0.2)  # 给Windows一点时间释放句柄
-                try:
-                    os.remove(temp_video_path)
-                except Exception as e:
-                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return Response({
-            'success': False,
-            'error': f'服务器内部错误: {str(e)}'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
