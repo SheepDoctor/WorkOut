@@ -125,10 +125,10 @@ export default {
       createRealisticHuman()
       scene.add(modelGroup)
 
-      // 辅助线网格
-      const grid = new THREE.GridHelper(10, 20, 0x1e293b, 0x0f172a)
-      grid.position.y = -1
-      scene.add(grid)
+      // 已移除辅助线网格展示
+      // const grid = new THREE.GridHelper(10, 20, 0x1e293b, 0x0f172a)
+      // grid.position.y = -1
+      // scene.add(grid)
 
       // 鼠标事件
       window.addEventListener('mousemove', onMouseMove)

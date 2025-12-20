@@ -1,6 +1,6 @@
 <template>
-  <div class="w-full max-w-lg h-full max-h-[800px] flex flex-col p-6 relative overflow-hidden">
-    <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl overflow-y-auto">
+  <div class="w-full max-w-lg h-full flex flex-col p-6 relative overflow-hidden">
+    <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl overflow-y-auto flex-1">
       <header class="mb-8">
         <router-link to="/" class="text-blue-400 text-sm font-semibold tracking-widest uppercase mb-4 block hover:underline">
           <i class="fa-solid fa-arrow-left mr-2"></i> 返回主页

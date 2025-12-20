@@ -14,15 +14,34 @@ import numpy as np
 from django.http import JsonResponse
 import base64
 from .utils.video_analyzer import VideoAnalyzer
+from .utils.coach_agent import CoachAgent
+from .models import WorkoutLog
 
 
 from rest_framework import viewsets
-from .models import WorkoutHistory
-from .serializers import WorkoutHistorySerializer
+from .models import WorkoutPlan, WorkoutLog
+from .serializers import WorkoutPlanSerializer, WorkoutLogSerializer
 
-class WorkoutHistoryViewSet(viewsets.ModelViewSet):
-    queryset = WorkoutHistory.objects.all()
-    serializer_class = WorkoutHistorySerializer
+class WorkoutPlanViewSet(viewsets.ModelViewSet):
+    queryset = WorkoutPlan.objects.all()
+    serializer_class = WorkoutPlanSerializer
+
+class WorkoutLogViewSet(viewsets.ModelViewSet):
+    queryset = WorkoutLog.objects.all()
+    serializer_class = WorkoutLogSerializer
+    
+    def get_queryset(self):
+        queryset = WorkoutLog.objects.all()
+        # 支持按 exercise_id 过滤
+        exercise_id = self.request.query_params.get('exercise_id', None)
+        if exercise_id:
+            queryset = queryset.filter(exercise_id=exercise_id)
+        # 支持按 action_name 过滤
+        action_name = self.request.query_params.get('action_name', None)
+        if action_name:
+            queryset = queryset.filter(action_name=action_name)
+        # 默认按时间倒序
+        return queryset.order_by('-start_time')
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
@@ -260,14 +279,14 @@ def analyze_pose(request):
             # 提取关键点
             landmarks = results.pose_landmarks.landmark
             
-            # 绘制姿态
-            mp_drawing.draw_landmarks(
-                annotated_image,
-                results.pose_landmarks,
-                mp_pose.POSE_CONNECTIONS,
-                mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
-                mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2)
-            )
+            # 绘制姿态 (已禁用辅助点和辅助线展示)
+            # mp_drawing.draw_landmarks(
+            #     annotated_image,
+            #     results.pose_landmarks,
+            #     mp_pose.POSE_CONNECTIONS,
+            #     mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+            #     mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2)
+            # )
 
             # 根据动作类型进行分析
             if exercise_type == 'squat':
@@ -599,3 +618,119 @@ def detect_press(landmarks):
         feedback = "发力中"
         
     return state, avg_angle, feedback
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def evaluate_training_video(request):
+    """
+    评价用户的训练视频，给出AI反馈并保存到数据库
+    请求参数：
+    - video: 训练视频文件
+    - action_id: 动作ID
+    - action_name: 动作名称
+    - action_tips: 动作要领（用分号分隔）
+    - log_id: 训练记录ID（可选，如果提供则更新该记录）
+    - set_index: 组数索引（可选，用于记录是第几组）
+    """
+    try:
+        video_file = request.FILES.get('video')
+        action_id = request.data.get('action_id')
+        action_name = request.data.get('action_name', '')
+        action_tips = request.data.get('action_tips', '')
+        log_id = request.data.get('log_id')
+        set_index = request.data.get('set_index')
+        
+        if not video_file:
+            return Response({
+                'success': False,
+                'error': '请上传训练视频文件'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not action_id:
+            return Response({
+                'success': False,
+                'error': '请提供动作ID'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 保存临时视频文件
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+            for chunk in video_file.chunks():
+                temp_video.write(chunk)
+            temp_video_path = temp_video.name
+        
+        try:
+            # 调用CoachAgent进行评价
+            coach = CoachAgent()
+            feedback_data = coach.analyze_form(
+                temp_video_path,
+                action_name,
+                action_tips
+            )
+            
+            # 添加动作相关信息
+            feedback_data['action_id'] = int(action_id)
+            feedback_data['action_name'] = action_name
+            
+            # 如果提供了log_id，更新训练记录
+            if log_id:
+                try:
+                    workout_log = WorkoutLog.objects.get(id=log_id)
+                    
+                    # 初始化set_feedback字段（如果不存在）
+                    if workout_log.set_feedback is None:
+                        workout_log.set_feedback = []
+                    
+                    # 构建反馈对象
+                    set_feedback_item = {
+                        'action_id': int(action_id),
+                        'action_name': action_name,
+                        'set_index': int(set_index) if set_index else len(workout_log.set_feedback),
+                        'score': feedback_data.get('score', 0),
+                        'is_standard': feedback_data.get('is_standard', False),
+                        'detected_errors': feedback_data.get('detected_errors', []),
+                        'improvement_advice': feedback_data.get('improvement_advice', ''),
+                        'coach_comment': feedback_data.get('coach_comment', ''),
+                        'timestamp': str(workout_log.start_time) if hasattr(workout_log, 'start_time') else ''
+                    }
+                    
+                    # 添加到set_feedback数组
+                    workout_log.set_feedback.append(set_feedback_item)
+                    
+                    # 更新整体评分（取所有组的平均分）
+                    if workout_log.set_feedback:
+                        total_score = sum(item.get('score', 0) for item in workout_log.set_feedback)
+                        workout_log.ai_score = total_score / len(workout_log.set_feedback)
+                    
+                    # 更新AI反馈（合并所有组的建议）
+                    all_advice = [item.get('improvement_advice', '') for item in workout_log.set_feedback if item.get('improvement_advice')]
+                    workout_log.ai_feedback = '\n'.join(all_advice) if all_advice else None
+                    
+                    workout_log.save()
+                    
+                except WorkoutLog.DoesNotExist:
+                    # 如果log_id不存在，仍然返回反馈，但不保存到数据库
+                    pass
+            
+            return Response({
+                'success': True,
+                'data': feedback_data
+            }, status=status.HTTP_200_OK)
+            
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_video_path):
+                import time
+                time.sleep(0.2)  # 给Windows一点时间释放句柄
+                try:
+                    os.remove(temp_video_path)
+                except Exception as e:
+                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'error': f'服务器内部错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
