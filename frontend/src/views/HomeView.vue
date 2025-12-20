@@ -654,6 +654,7 @@ export default {
     const trainingVideoRecorder = ref(null); // MediaRecorder实例
     const recordedChunks = ref([]); // 录制的视频数据块
     const isRecordingTraining = ref(false); // 是否正在录制完整训练视频
+    const isTrainingCompleted = ref(false); // 训练是否完成（用于判断是否应该保存和分析视频）
 
     // 动作类型映射
     const getExerciseType = (exercise) => {
@@ -694,6 +695,9 @@ export default {
         cameraActive.value = true;
         reps.value = 0;
         isDown.value = false;
+        
+        // 重置训练完成状态
+        isTrainingCompleted.value = false;
         
         // 记录开始时间和重置时长
         startTime.value = new Date();
@@ -741,8 +745,14 @@ export default {
         };
 
         trainingVideoRecorder.value.onstop = async () => {
-          // 录制停止时自动保存视频
-          await saveRecordedTrainingVideo();
+          // 录制停止时，只有完成的训练才保存视频
+          if (isTrainingCompleted.value) {
+            await saveRecordedTrainingVideo();
+          } else {
+            // 如果是中断的训练，清空录制的数据，不保存
+            recordedChunks.value = [];
+            console.log('训练已中断，不保存视频');
+          }
         };
 
         trainingVideoRecorder.value.start(1000); // 每秒收集一次数据
@@ -762,6 +772,13 @@ export default {
     };
 
     const saveRecordedTrainingVideo = async () => {
+      // 只有完成的训练才保存视频
+      if (!isTrainingCompleted.value) {
+        console.log('训练未完成，不保存视频');
+        recordedChunks.value = []; // 清空数据
+        return;
+      }
+
       if (recordedChunks.value.length === 0) {
         console.log('没有录制的视频数据');
         return;
@@ -802,9 +819,20 @@ export default {
       // 如果 status 是事件对象（点击关闭按钮时），则默认为 'interrupted'
       const finalStatus = typeof status === 'string' ? status : 'interrupted';
 
+      // 设置训练完成状态
+      isTrainingCompleted.value = (finalStatus === 'completed');
+      
       // 停止训练视频录制（只在完成训练时保存）
       if (finalStatus === 'completed') {
         stopTrainingVideoRecording();
+      } else {
+        // 如果是中断的训练，直接停止录制但不保存
+        if (trainingVideoRecorder.value && isRecordingTraining.value) {
+          trainingVideoRecorder.value.stop();
+          isRecordingTraining.value = false;
+          recordedChunks.value = []; // 清空数据
+          console.log('训练已中断，停止录制并清空数据');
+        }
       }
       
       if (stream.value) {
@@ -1044,11 +1072,23 @@ export default {
       if (!confirm('确定删除这条训练记录吗？')) return;
       
       try {
-        await axios.delete(`/api/logs/${id}/`);
+        const response = await axios.delete(`/api/logs/${id}/`);
+        // 删除成功后刷新列表
         await fetchExerciseHistory();
       } catch (e) {
         console.error("删除记录失败", e);
-        alert('删除失败，请稍后重试');
+        // 即使删除失败，也尝试刷新列表（可能是记录已经不存在）
+        try {
+          await fetchExerciseHistory();
+        } catch (refreshError) {
+          console.error("刷新列表失败", refreshError);
+        }
+        // 检查是否是404错误（记录不存在）
+        if (e.response && e.response.status === 404) {
+          // 记录不存在，忽略错误，直接刷新列表
+          return;
+        }
+        alert('删除失败: ' + (e.response?.data?.error || e.message || '未知错误'));
       }
     };
 
@@ -1174,6 +1214,12 @@ export default {
     };
 
     const autoEvaluateTraining = async () => {
+      // 只有完成的训练才提交AI分析
+      if (!isTrainingCompleted.value) {
+        console.log('训练未完成，不提交AI分析');
+        return;
+      }
+
       if (!savedVideoInfo.value) {
         console.log('没有已保存的视频信息，跳过自动评价');
         return;
@@ -1199,6 +1245,7 @@ export default {
 
         formData.append('workout_plan', JSON.stringify(workoutPlan));
         formData.append('plan_id', currentWorkoutId.value || '');
+        formData.append('training_status', 'completed'); // 明确传递训练状态
 
         console.log('开始自动AI分析训练视频...');
 
@@ -1351,6 +1398,7 @@ export default {
       savedVideoInfo.value = null;
       savingVideo.value = false;
       recordedChunks.value = [];
+      isTrainingCompleted.value = false;
     };
 
     // 手势监听

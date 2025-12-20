@@ -41,17 +41,43 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutLogSerializer
     
     def get_queryset(self):
-        queryset = WorkoutLog.objects.all()
-        # 支持按 exercise_id 过滤
-        exercise_id = self.request.query_params.get('exercise_id', None)
-        if exercise_id:
-            queryset = queryset.filter(exercise_id=exercise_id)
-        # 支持按 action_name 过滤
-        action_name = self.request.query_params.get('action_name', None)
-        if action_name:
-            queryset = queryset.filter(action_name=action_name)
-        # 默认按时间倒序
-        return queryset.order_by('-start_time')
+        try:
+            queryset = WorkoutLog.objects.all()
+            # 支持按 exercise_id 过滤
+            exercise_id = self.request.query_params.get('exercise_id', None)
+            if exercise_id:
+                queryset = queryset.filter(exercise_id=exercise_id)
+            # 支持按 action_name 过滤
+            action_name = self.request.query_params.get('action_name', None)
+            if action_name:
+                queryset = queryset.filter(action_name=action_name)
+            # 默认按时间倒序
+            return queryset.order_by('-start_time')
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error in get_queryset: {e}")
+            return WorkoutLog.objects.none()
+    
+    def list(self, request, *args, **kwargs):
+        try:
+            return super().list(request, *args, **kwargs)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=500)
+    
+    def destroy(self, request, *args, **kwargs):
+        """删除训练记录"""
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error in destroy: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
@@ -727,6 +753,7 @@ def evaluate_complete_training(request):
     - video_path: 已保存的视频路径（可选，用于使用已保存的视频）
     - workout_plan: 训练计划信息（JSON字符串，包含所有动作信息）
     - plan_id: 训练计划ID（可选，用于关联）
+    - training_status: 训练状态（'completed' 或 'interrupted'），只有 completed 的训练才会被分析
     """
     try:
         video_file = request.FILES.get('video')
@@ -734,6 +761,33 @@ def evaluate_complete_training(request):
         workout_plan_str = request.data.get('workout_plan', '[]')
         plan_id = request.data.get('plan_id')
         session_id = request.data.get('session_id')
+        training_status = request.data.get('training_status', 'completed')  # 默认 completed
+        
+        # 检查训练状态，只有完成的训练才进行分析
+        if training_status != 'completed':
+            # 如果没有明确传递状态，尝试从最近的训练记录中查找
+            if plan_id:
+                try:
+                    plan = WorkoutPlan.objects.get(id=plan_id)
+                    # 查找该计划下最近的训练记录
+                    recent_log = WorkoutLog.objects.filter(
+                        plan_title=plan.title
+                    ).order_by('-start_time').first()
+                    
+                    # 如果最近的记录是中断的，拒绝分析
+                    if recent_log and recent_log.status != 'completed':
+                        return Response({
+                            'success': False,
+                            'error': '训练已中断，不进行AI分析'
+                        }, status=status.HTTP_400_BAD_REQUEST)
+                except WorkoutPlan.DoesNotExist:
+                    pass
+            else:
+                # 没有 plan_id 且状态不是 completed，直接拒绝
+                return Response({
+                    'success': False,
+                    'error': '训练已中断，不进行AI分析'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         # 确定视频路径
         if video_path:

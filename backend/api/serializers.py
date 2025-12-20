@@ -50,3 +50,72 @@ class WorkoutLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutLog
         fields = '__all__'
+    
+    def to_representation(self, instance):
+        """自定义序列化，确保 JSONField 正确序列化"""
+        try:
+            # 检查实例是否有效
+            if instance is None:
+                return None
+            
+            # 尝试获取基本数据
+            data = super().to_representation(instance)
+            
+            # 确保 JSONField 字段正确序列化
+            if hasattr(instance, 'set_feedback'):
+                if instance.set_feedback is None:
+                    data['set_feedback'] = None
+                elif isinstance(instance.set_feedback, (dict, list)):
+                    data['set_feedback'] = instance.set_feedback
+                else:
+                    # 如果是字符串，尝试解析
+                    import json
+                    try:
+                        data['set_feedback'] = json.loads(instance.set_feedback) if isinstance(instance.set_feedback, str) else instance.set_feedback
+                    except:
+                        data['set_feedback'] = None
+            
+            if hasattr(instance, 'data_snapshot'):
+                if instance.data_snapshot is None:
+                    data['data_snapshot'] = None
+                elif isinstance(instance.data_snapshot, (dict, list)):
+                    data['data_snapshot'] = instance.data_snapshot
+                else:
+                    # 如果是字符串，尝试解析
+                    import json
+                    try:
+                        data['data_snapshot'] = json.loads(instance.data_snapshot) if isinstance(instance.data_snapshot, str) else instance.data_snapshot
+                    except:
+                        data['data_snapshot'] = None
+            
+            return data
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Error in WorkoutLogSerializer.to_representation: {e}")
+            # 返回基本字段，避免完全失败
+            try:
+                # 尝试手动构建基本字段
+                return {
+                    'id': instance.id,
+                    'plan_title': getattr(instance, 'plan_title', ''),
+                    'action_name': getattr(instance, 'action_name', None),
+                    'set_index': getattr(instance, 'set_index', None),
+                    'reps_count': getattr(instance, 'reps_count', 0),
+                    'start_time': instance.start_time.isoformat() if hasattr(instance, 'start_time') and instance.start_time else None,
+                    'duration': getattr(instance, 'duration', 0),
+                    'exercise_id': getattr(instance, 'exercise_id', None),
+                    'target_reps': getattr(instance, 'target_reps', None),
+                    'target_sets': getattr(instance, 'target_sets', None),
+                    'status': getattr(instance, 'status', 'interrupted'),
+                    'ai_score': getattr(instance, 'ai_score', None),
+                    'ai_feedback': getattr(instance, 'ai_feedback', None),
+                    'set_feedback': None,
+                    'data_snapshot': None,
+                }
+            except Exception as e2:
+                # 如果连基本字段都获取失败，返回最小信息
+                return {
+                    'id': instance.id if hasattr(instance, 'id') else None,
+                    'error': f'Serialization error: {str(e)}'
+                }
