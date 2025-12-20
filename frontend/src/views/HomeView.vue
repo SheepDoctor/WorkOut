@@ -152,8 +152,8 @@
               </label>
           </div>
 
-          <transition :name="transitionName">
-              <div :key="currentIndex" class="w-full" v-if="exercises.length">
+          <transition :name="transitionName" mode="out-in">
+              <div :key="currentIndex" class="w-full exercise-card" v-if="exercises.length">
                   <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl">
                       <div class="mb-10">
                           <div class="flex items-center gap-3 mb-3">
@@ -230,7 +230,7 @@
                       </div>
 
                       <!-- 视频/进度 切换区域 -->
-                      <div class="relative w-full aspect-video mb-8 group" v-if="cameraActive">
+                      <div class="relative w-full aspect-[4/3] mb-8 group" v-if="cameraActive">
                           <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/80 to-slate-900 rounded-3xl overflow-hidden border border-cyan-500/20 shadow-2xl shadow-cyan-500/10">
                               <video ref="videoElement" autoplay playsinline class="w-full h-full object-cover"></video>
                               <img v-if="annotatedImage" :src="annotatedImage" class="absolute inset-0 w-full h-full object-cover" />
@@ -413,11 +413,14 @@
           </button>
       </footer>
 
+      <!-- 庆祝动画 -->
+      <CelebrationAnimation :show="showCelebration" />
+
       <!-- 完成总结弹窗 -->
-      <transition name="fade">
+      <transition name="summary-enter">
           <div v-if="showSummary" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 text-center text-white" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);">
-              <div class="max-w-md">
-                  <div class="text-6xl mb-6">🏆</div>
+              <div class="max-w-md summary-content">
+                  <div class="text-6xl mb-6 animate-bounce">🏆</div>
                   <h2 class="text-3xl font-bold mb-4">太棒了！</h2>
                   <p class="text-slate-400 mb-8">您已完成今日所有训练项目。</p>
 
@@ -586,9 +589,13 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import axios from 'axios';
 import { PoseAnalyzer } from '../utils/poseAnalyzer';
 import actionCategories from '../utils/action_categories.json';
+import CelebrationAnimation from '../components/CelebrationAnimation.vue';
 
 export default {
   name: 'HomeView',
+  components: {
+    CelebrationAnimation
+  },
   setup() {
     const exercises = ref([]);
     const history = ref([]);
@@ -600,6 +607,7 @@ export default {
     const syncing = ref(false);
     const autoJumping = ref(false);
     const showSummary = ref(false);
+    const showCelebration = ref(false);
     const transitionName = ref('slide-right');
     const currentWorkoutId = ref(null); // 当前计划 ID (WorkoutPlan)
     const currentLogId = ref(null);    // 当前训练日志 ID (WorkoutLog)
@@ -1330,7 +1338,13 @@ export default {
 
     const handleAutoAdvance = () => {
       if (currentIndex.value === exercises.value.length - 1) {
-        setTimeout(() => showSummary.value = true, 800);
+        // 先显示庆祝动画
+        showCelebration.value = true;
+        // 3秒后显示总结弹窗，并隐藏庆祝动画
+        setTimeout(() => {
+          showCelebration.value = false;
+          showSummary.value = true;
+        }, 3000);
         return;
       }
       autoJumping.value = true;
@@ -1420,7 +1434,7 @@ export default {
 
     return {
       exercises, currentIndex, currentExercise, currentPercent, isCompleted,
-      loading, loadingSteps, currentLoadingStep, syncing, autoJumping, showSummary, transitionName,
+      loading, loadingSteps, currentLoadingStep, syncing, autoJumping, showSummary, showCelebration, transitionName,
       history, showHistory, exerciseHistory,
       cameraActive, analyzing, error, feedback, annotatedImage, reps, poseState, videoElement,
       startCamera, stopCamera, getPoseStateText,
@@ -1445,14 +1459,45 @@ export default {
 
 .slide-right-enter-active, .slide-right-leave-active,
 .slide-left-enter-active, .slide-left-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: absolute; 
   width: 100%;
 }
-.slide-right-enter-from { transform: translateX(100%); opacity: 0; }
-.slide-right-leave-to { transform: translateX(-100%); opacity: 0; }
-.slide-left-enter-from { transform: translateX(-100%); opacity: 0; }
-.slide-left-leave-to { transform: translateX(100%); opacity: 0; }
+.slide-right-enter-from { 
+  transform: translateX(100%) scale(0.95); 
+  opacity: 0; 
+  filter: blur(10px);
+}
+.slide-right-leave-to { 
+  transform: translateX(-100%) scale(0.95); 
+  opacity: 0; 
+  filter: blur(10px);
+}
+.slide-left-enter-from { 
+  transform: translateX(-100%) scale(0.95); 
+  opacity: 0; 
+  filter: blur(10px);
+}
+.slide-left-leave-to { 
+  transform: translateX(100%) scale(0.95); 
+  opacity: 0; 
+  filter: blur(10px);
+}
+
+.exercise-card {
+  animation: card-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 
 .progress-transition {
   transition: stroke-dashoffset 0.6s ease;
@@ -1464,19 +1509,74 @@ export default {
 }
 
 .fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from { 
   opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+.fade-leave-to { 
+  opacity: 0;
+  transform: scale(1.05) translateY(-10px);
 }
 
 .slide-fade-enter-active, .slide-fade-leave-active {
-  transition: all 0.3s ease-out;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
- .slide-fade-enter-from, .slide-fade-leave-to {
-   transform: translateX(20px);
-   opacity: 0;
+ .slide-fade-enter-from { 
+   transform: translateX(30px) scale(0.95);
+   opacity: 0; 
  }
+ .slide-fade-leave-to { 
+   transform: translateX(-30px) scale(0.95);
+   opacity: 0; 
+ }
+
+/* 总结弹窗进入动画 */
+.summary-enter-enter-active {
+  animation: summary-enter 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.summary-enter-leave-active {
+  animation: summary-leave 0.4s ease-in;
+}
+
+@keyframes summary-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes summary-leave {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+}
+
+.summary-content {
+  animation: content-fade-in 0.8s ease-out 0.2s both;
+}
+
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
  /* 自定义滚动条样式 */
 .custom-scrollbar {

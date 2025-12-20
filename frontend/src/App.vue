@@ -1,10 +1,44 @@
 <template>
   <div id="app" class="h-screen flex items-center justify-center gradient-bg">
     <main class="w-full h-full flex items-center justify-center">
-      <router-view />
+      <transition :name="transitionName" mode="out-in">
+        <router-view :key="$route.path" />
+      </transition>
     </main>
   </div>
 </template>
+
+<script>
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+
+export default {
+  name: 'App',
+  setup() {
+    const route = useRoute()
+    const transitionName = ref('fade')
+
+    watch(() => route.path, (to, from) => {
+      // 根据路由变化方向决定过渡动画
+      const routes = ['/', '/analyzer', '/muscle', '/achievements']
+      const toIndex = routes.indexOf(to)
+      const fromIndex = routes.indexOf(from)
+      
+      if (toIndex > fromIndex) {
+        transitionName.value = 'slide-left'
+      } else if (toIndex < fromIndex) {
+        transitionName.value = 'slide-right'
+      } else {
+        transitionName.value = 'fade'
+      }
+    })
+
+    return {
+      transitionName
+    }
+  }
+}
+</script>
 
 <script>
 export default {
@@ -50,6 +84,52 @@ body {
 @keyframes pulse {
   0%, 100% { opacity: 0.8; }
   50% { opacity: 1; }
+}
+
+/* 路由过渡动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(1.05);
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-100px);
+}
+
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-100px);
+}
+
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
 }
 </style>
 

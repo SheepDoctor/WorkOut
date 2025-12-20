@@ -54,6 +54,21 @@ const POSE_CONNECTIONS = [
   [28, 30], [28, 32], [30, 32]  // 右脚
 ];
 
+// 只包含四肢的连接（不包含面部 0-10）
+const LIMBS_CONNECTIONS = [
+  [11, 12], // 肩膀
+  [11, 13], [13, 15], // 左臂
+  [15, 17], [15, 19], [15, 21], [17, 19], // 左手
+  [12, 14], [14, 16], // 右臂
+  [16, 18], [16, 20], [16, 22], [18, 20], // 右手
+  [11, 23], [12, 24], // 躯干
+  [23, 24], // 臀部
+  [23, 25], [25, 27], // 左腿
+  [27, 29], [27, 31], [29, 31], // 左脚
+  [24, 26], [26, 28], // 右腿
+  [28, 30], [28, 32], [30, 32]  // 右脚
+];
+
 // MediaPipe PoseLandmark 枚举
 const PoseLandmark = {
   NOSE: 0,
@@ -679,15 +694,30 @@ export class PoseAnalyzer {
                 await loadMediaPipeModules();
               }
               
-              drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+              // 只绘制四肢的连接线（不包含面部）
+              drawConnectors(ctx, results.poseLandmarks, LIMBS_CONNECTIONS, {
                 color: 'rgba(224, 224, 224, 0.4)',
                 lineWidth: 1.5
               });
-              drawLandmarks(ctx, results.poseLandmarks, {
-                color: 'rgba(255, 255, 255, 0.7)',
-                lineWidth: 1,
-                radius: 2
-              });
+              
+              // 手动绘制四肢的关键点（索引11-32，不包含面部0-10）
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+              ctx.lineWidth = 1;
+              const pointRadius = 2;
+              
+              // 只绘制索引11-32的关键点（四肢）
+              for (let i = 11; i < results.poseLandmarks.length; i++) {
+                const landmark = results.poseLandmarks[i];
+                if (landmark && landmark.visibility > 0.5) {
+                  const x = landmark.x * canvasElement.width;
+                  const y = landmark.y * canvasElement.height;
+                  
+                  ctx.beginPath();
+                  ctx.arc(x, y, pointRadius, 0, 2 * Math.PI);
+                  ctx.fill();
+                }
+              }
 
               // 如果设置了动作类别，使用 ActionCounter 检测
               if (this.actionCounter) {
