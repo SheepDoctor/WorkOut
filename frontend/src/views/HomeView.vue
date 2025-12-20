@@ -31,7 +31,10 @@
       <!-- 顶部进度指示 -->
       <header class="mb-6 flex items-center justify-between">
           <div class="flex gap-4 items-center">
-              <button @click="showHistory = true" class="text-slate-400 hover:text-white transition-colors">
+              <button v-if="exercises.length > 0" @click="exitWorkout" class="text-slate-400 hover:text-white transition-colors" title="退出训练">
+                  <i class="fa-solid fa-arrow-left"></i>
+              </button>
+              <button @click="showHistory = true" class="text-slate-400 hover:text-white transition-colors" title="训练历史">
                   <i class="fa-solid fa-clock-rotate-left"></i>
               </button>
               <div class="flex gap-1.5">
@@ -1373,6 +1376,25 @@ export default {
       evaluationProgress.value = 0;
     };
 
+    const exitWorkout = async () => {
+      
+      // 停止摄像头（如果正在运行）
+      if (cameraActive.value) {
+        await stopCamera('interrupted');
+      }
+      
+      // 清除训练计划
+      exercises.value = [];
+      currentIndex.value = 0;
+      currentWorkoutId.value = null;
+      showSummary.value = false;
+      evaluationResult.value = null;
+      uploadingEvaluation.value = false;
+      evaluationProgress.value = 0;
+      exerciseHistory.value = [];
+      return;
+    };
+
     // 手势监听
     let touchStartX = 0;
     const handleTouchStart = (e) => touchStartX = e.touches[0].clientX;
@@ -1402,7 +1424,7 @@ export default {
       history, showHistory, exerciseHistory,
       cameraActive, analyzing, error, feedback, annotatedImage, reps, poseState, videoElement,
       startCamera, stopCamera, getPoseStateText,
-      incrementProgress, next, prev, parseTips, resetWorkout,
+      incrementProgress, next, prev, parseTips, resetWorkout, exitWorkout,
       handleTouchStart, handleTouchEnd, handleVideoUpload,
       fetchHistory, saveCurrentWorkout, loadWorkout, deleteHistoryItem, deleteLog, formatDate,
       editingId, editingTitle, startEdit, cancelEdit, saveEdit,

@@ -19,15 +19,14 @@ body {
   font-family: 'Inter', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #050b18;
-  color: #e2e8f0;
+  background-color: #020617;
+  color: #f8fafc;
   overflow: hidden;
 }
 
 #app {
   width: 100vw;
   height: 100vh;
-  background: radial-gradient(circle at top right, #1e293b 0%, #050b18 100%);
 }
 </style>
 
