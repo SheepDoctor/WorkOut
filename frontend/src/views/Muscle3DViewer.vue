@@ -2,15 +2,15 @@
   <div class="muscle-3d-viewer">
     <div class="info-panel max-w-sm">
       <div class="mb-6">
-        <router-link to="/" class="text-blue-400 text-xs font-bold uppercase tracking-widest mb-4 inline-flex items-center hover:underline pointer-events-auto">
+        <router-link to="/" class="text-cyan-300 text-xs font-bold uppercase tracking-widest mb-4 inline-flex items-center hover:underline hover:text-cyan-200 transition-all pointer-events-auto hover:drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
           <i class="fa-solid fa-arrow-left mr-2"></i> 返回主页
         </router-link>
-        <h1 class="text-3xl font-black text-white tracking-tighter">ANATOMY<span class="text-blue-500">PRO</span></h1>
+        <h1 class="text-3xl font-black text-white tracking-tighter drop-shadow-lg">ANATOMY<span class="text-cyan-400">PRO</span></h1>
         <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest font-bold">专业健身肌肉 3D 映射系统</p>
       </div>
       
       <div id="muscle-details" class="transition-all duration-500 opacity-0 translate-y-4">
-        <div class="p-5 bg-slate-900/80 rounded-xl border border-slate-700/50 backdrop-blur-xl shadow-2xl">
+        <div class="p-5 bg-gradient-to-br from-indigo-900/80 to-purple-900/70 rounded-xl border border-cyan-500/30 backdrop-blur-xl shadow-2xl shadow-cyan-500/20">
           <div class="stats-badge" id="muscle-category">核心肌群</div>
           <h2 id="muscle-name" class="text-2xl font-bold text-white mb-2">---</h2>
           <p id="muscle-desc" class="text-slate-400 text-sm leading-relaxed mb-4"></p>
@@ -18,15 +18,15 @@
           <div class="space-y-3">
             <div>
               <div class="flex items-center gap-2 mb-1">
-                <div class="w-1 h-3 bg-blue-500 rounded-full"></div>
-                <span class="text-xs font-bold text-slate-300 uppercase">主要训练动作</span>
+                <div class="w-1 h-3 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-full shadow-lg shadow-cyan-500/50"></div>
+                <span class="text-xs font-bold text-cyan-200 uppercase">主要训练动作</span>
               </div>
               <p id="muscle-exercises" class="text-slate-100 text-sm font-medium"></p>
             </div>
-            <div id="muscle-fatigue-stats" class="mt-4 pt-4 border-t border-slate-700/50">
+            <div id="muscle-fatigue-stats" class="mt-4 pt-4 border-t border-cyan-500/30">
               <div class="flex items-center gap-2 mb-2">
-                <div class="w-1 h-3 bg-orange-500 rounded-full"></div>
-                <span class="text-xs font-bold text-slate-300 uppercase">疲劳程度</span>
+                <div class="w-1 h-3 bg-gradient-to-b from-orange-400 to-red-500 rounded-full shadow-lg shadow-orange-500/50"></div>
+                <span class="text-xs font-bold text-orange-200 uppercase">疲劳程度</span>
               </div>
               <div class="space-y-2">
                 <div class="flex justify-between text-xs">
@@ -44,10 +44,10 @@
                 <div class="mt-2">
                   <div class="flex justify-between items-center mb-1">
                     <span class="text-xs text-slate-400">疲劳指数</span>
-                    <span id="fatigue-level" class="text-xs font-bold text-orange-400">0%</span>
+                    <span id="fatigue-level" class="text-xs font-bold text-orange-300">0%</span>
                   </div>
-                  <div class="w-full bg-slate-800 rounded-full h-2">
-                    <div id="fatigue-bar" class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                  <div class="w-full bg-indigo-950/60 rounded-full h-2">
+                    <div id="fatigue-bar" class="bg-gradient-to-r from-orange-400 to-red-500 h-2 rounded-full transition-all duration-300 shadow-lg shadow-orange-500/50" style="width: 0%"></div>
                   </div>
                 </div>
               </div>
@@ -57,11 +57,11 @@
       </div>
     </div>
 
-    <div id="hover-label" class="muscle-label border-l-4 border-l-blue-500">
+    <div id="hover-label" class="muscle-label border-l-4 border-l-cyan-400 shadow-lg shadow-cyan-500/30">
       <span id="label-text" class="font-bold text-white text-sm"></span>
     </div>
 
-    <div class="controls-hint text-slate-300 flex items-center gap-4">
+    <div class="controls-hint text-cyan-100 flex items-center gap-4">
       <span>🖱️ <b>左键</b> 自由旋转</span>
       <div class="w-px h-3 bg-slate-600"></div>
       <span>🖱️ <b>右键</b> 平移模型</span>
@@ -187,7 +187,7 @@ export default {
       }
 
       scene = new THREE.Scene()
-      scene.background = new THREE.Color(0x020617)
+      scene.background = new THREE.Color(0x1e1b4b)
       
       camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
       camera.position.set(0, 1.2, 3.5)
@@ -529,7 +529,7 @@ export default {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #020617;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
   color: white;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -556,15 +556,15 @@ export default {
 
 .muscle-label {
   position: absolute;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.95) 0%, rgba(49, 46, 129, 0.95) 100%);
+  border: 1px solid rgba(34, 211, 238, 0.5);
   padding: 8px 12px;
-  border-radius: 6px;
-  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  backdrop-filter: blur(12px);
   display: none;
   pointer-events: none;
   z-index: 50;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 15px rgba(34, 211, 238, 0.3);
 }
 
 .controls-hint {
@@ -572,23 +572,26 @@ export default {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(30, 41, 59, 0.6);
+  background: linear-gradient(135deg, rgba(49, 46, 129, 0.7) 0%, rgba(88, 28, 135, 0.6) 100%);
   padding: 8px 16px;
   border-radius: 20px;
   font-size: 0.75rem;
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3), 0 0 10px rgba(34, 211, 238, 0.2);
 }
 
 .stats-badge {
   display: inline-block;
   padding: 2px 8px;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  color: #67e8f9;
+  border-radius: 6px;
   font-size: 0.7rem;
   font-weight: bold;
   margin-bottom: 4px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.2);
 }
 </style>
 

@@ -1,21 +1,21 @@
 <template>
-   <div class="w-full max-w-lg h-full flex flex-col p-6 relative overflow-y-auto custom-scrollbar bg-slate-950/50"
+   <div class="w-full max-w-lg h-full flex flex-col p-6 relative overflow-y-auto custom-scrollbar"
         @touchstart="handleTouchStart"
         @touchend="handleTouchEnd">
 
       <!-- 加载状态 -->
-      <div v-if="loading" class="absolute inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-8">
-          <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-10"></div>
+      <div v-if="loading" class="absolute inset-0 z-50 bg-gradient-to-br from-slate-950 via-purple-950 to-indigo-950 flex flex-col items-center justify-center p-8">
+          <div class="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mb-10 shadow-lg shadow-cyan-500/50"></div>
           
           <div class="w-full max-w-[240px] space-y-4">
-              <div v-for="(step, index) in loadingSteps" :key="index" 
-                   class="flex items-center gap-4 transition-all duration-500"
-                   :class="index <= currentLoadingStep ? 'opacity-100 translate-x-0' : 'opacity-20 -translate-x-2'">
-                  <div class="w-5 h-5 flex items-center justify-center">
-                      <i v-if="index < currentLoadingStep" class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
-                      <i v-else-if="index === currentLoadingStep" class="fa-solid fa-circle-notch animate-spin text-blue-500 text-sm"></i>
-                      <div v-else class="w-1.5 h-1.5 rounded-full bg-slate-800"></div>
-                  </div>
+                  <div v-for="(step, index) in loadingSteps" :key="index" 
+                       class="flex items-center gap-4 transition-all duration-500"
+                       :class="index <= currentLoadingStep ? 'opacity-100 translate-x-0' : 'opacity-20 -translate-x-2'">
+                      <div class="w-5 h-5 flex items-center justify-center">
+                          <i v-if="index < currentLoadingStep" class="fa-solid fa-circle-check text-emerald-400 text-sm drop-shadow-lg"></i>
+                          <i v-else-if="index === currentLoadingStep" class="fa-solid fa-circle-notch animate-spin text-cyan-400 text-sm drop-shadow-lg"></i>
+                          <div v-else class="w-1.5 h-1.5 rounded-full bg-indigo-800"></div>
+                      </div>
                   <span :class="['text-xs tracking-widest uppercase font-medium', 
                                  index === currentLoadingStep ? 'text-white' : 'text-slate-500']">
                       {{ step }}
@@ -40,12 +40,12 @@
               <div class="flex gap-1.5">
                   <div v-for="(_, i) in exercises" :key="i"
                        :class="['h-1 rounded-full transition-all duration-300', 
-                                i === currentIndex ? 'w-8 bg-blue-500' : (i < currentIndex ? 'w-4 bg-emerald-500' : 'w-4 bg-slate-700')]">
+                                i === currentIndex ? 'w-8 bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/50' : (i < currentIndex ? 'w-4 bg-gradient-to-r from-emerald-400 to-teal-500' : 'w-4 bg-indigo-800/50')]">
                   </div>
               </div>
           </div>
           <div class="flex items-center gap-3">
-              <router-link to="/achievements" class="text-slate-400 hover:text-yellow-400 transition-colors relative" title="荣誉殿堂">
+              <router-link to="/achievements" class="text-slate-400 hover:text-yellow-300 transition-all hover:drop-shadow-[0_0_8px_rgba(253,224,71,0.5)] relative" title="荣誉殿堂">
                   <i class="fa-solid fa-medal"></i>
               </router-link>
               <span class="text-xs font-mono text-slate-500" v-if="exercises.length">
@@ -57,7 +57,7 @@
       <!-- 历史记录侧边栏 -->
       <transition name="slide-fade">
           <div v-if="showHistory" class="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md">
-                  <div class="absolute right-0 top-0 bottom-0 w-80 bg-slate-900 shadow-2xl p-6 overflow-y-auto custom-scrollbar">
+                  <div class="absolute right-0 top-0 bottom-0 w-80 bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 shadow-2xl border-l border-cyan-500/20 p-6 overflow-y-auto custom-scrollbar">
                   <div class="flex items-center justify-between mb-8">
                       <h2 class="text-xl font-bold text-white">训练历史</h2>
                       <button @click="showHistory = false" class="text-slate-400 hover:text-white">
@@ -72,7 +72,7 @@
 
                   <div class="space-y-4">
                       <div v-for="item in history" :key="item.id" 
-                          class="bg-slate-800/50 rounded-2xl p-4 border border-white/5 hover:border-blue-500/30 transition-all group">
+                          class="bg-gradient-to-br from-slate-800/50 to-indigo-900/30 rounded-2xl p-4 border border-cyan-500/10 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/20 transition-all group backdrop-blur-sm">
                         <div class="flex justify-between items-start mb-2">
                             <!-- 编辑模式 -->
                             <div v-if="editingId === item.id" class="flex-1 mr-2">
@@ -80,11 +80,11 @@
                                     v-model="editingTitle" 
                                     @keyup.enter="saveEdit(item.id)"
                                     @keyup.esc="cancelEdit"
-                                    class="history-edit-input w-full bg-slate-700/50 border border-blue-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    class="history-edit-input w-full bg-gradient-to-br from-indigo-900/60 to-slate-800/60 border border-cyan-400/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-cyan-300 focus:shadow-lg focus:shadow-cyan-500/30"
                                 />
                             </div>
                             <!-- 显示模式 -->
-                            <h3 v-else class="text-sm font-bold text-white group-hover:text-blue-400 transition-colors cursor-pointer flex-1" @click="loadWorkout(item)">
+                            <h3 v-else class="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors cursor-pointer flex-1" @click="loadWorkout(item)">
                                 {{ item.title }}
                             </h3>
                             <div class="flex gap-1">
@@ -125,7 +125,7 @@
                         <p class="text-[10px] text-slate-500 mb-3">{{ formatDate(item.created_at) }}</p>
                           <div class="flex flex-wrap gap-1">
                               <span v-for="ex in item.exercises.slice(0, 3)" :key="ex.id" 
-                                    class="text-[9px] bg-slate-700/50 text-slate-400 px-2 py-0.5 rounded-full">
+                                    class="text-[9px] bg-gradient-to-br from-indigo-800/40 to-slate-700/40 text-slate-300 px-2 py-0.5 rounded-full border border-indigo-600/30">
                                   {{ ex.name }}
                               </span>
                               <span v-if="item.exercises.length > 3" class="text-[9px] text-slate-600">...</span>
@@ -140,12 +140,12 @@
       <div class="flex-1 relative">
           <!-- 无数据时的占位图 -->
           <div v-if="exercises.length === 0 && !loading" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-              <div class="w-32 h-32 bg-slate-700/30 rounded-full flex items-center justify-center mb-6 border border-white/5 shadow-inner">
+              <div class="w-32 h-32 bg-gradient-to-br from-indigo-900/40 to-purple-900/30 rounded-full flex items-center justify-center mb-6 border border-cyan-500/20 shadow-inner shadow-cyan-500/20">
                   <i class="fa-solid fa-dumbbell text-4xl text-slate-400"></i>
               </div>
               <h3 class="text-xl font-bold text-slate-200 mb-2">暂无训练计划</h3>
               <p class="text-sm text-slate-400 mb-8 max-w-[240px]">您还没有创建训练计划，可以上传视频进行 AI 分析，或从历史记录中加载。</p>
-              <label class="px-8 py-4 bg-blue-400/60 hover:bg-blue-400/70 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-400/20 cursor-pointer">
+              <label class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white rounded-2xl font-bold transition-all shadow-lg shadow-cyan-500/50 hover:shadow-cyan-400/60 hover:scale-105 cursor-pointer">
                   <i class="fa-solid fa-upload mr-2"></i>
                   上传视频开始
                   <input type="file" accept="video/*" class="hidden" @change="handleVideoUpload" />
@@ -157,13 +157,13 @@
                   <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl">
                       <div class="mb-10">
                           <div class="flex items-center gap-3 mb-3">
-                              <span class="px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold tracking-widest uppercase rounded-full">
+                              <span class="px-3 py-1 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-400/30 text-cyan-300 text-[10px] font-bold tracking-widest uppercase rounded-full shadow-lg shadow-cyan-500/20">
                                   {{ isCompleted ? '动作已完成' : '训练中' }}
                               </span>
                               <div v-if="!isCompleted" class="flex gap-1">
-                                  <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
-                                  <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                  <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                  <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce shadow-lg shadow-cyan-500/50"></span>
+                                  <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.15s] shadow-lg shadow-cyan-500/50"></span>
+                                  <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.3s] shadow-lg shadow-cyan-500/50"></span>
                               </div>
                           </div>
                           <h1 class="text-3xl font-extrabold text-white mb-3 leading-tight tracking-tight">
@@ -171,25 +171,25 @@
                           </h1>
                           <!-- 训练部位标签 -->
                           <div v-if="currentExercise.muscle_group" class="mb-6">
-                              <span class="inline-flex items-center gap-2 px-4 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold tracking-widest uppercase rounded-full">
+                              <span class="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-300 text-xs font-bold tracking-widest uppercase rounded-full shadow-lg shadow-purple-500/20">
                                   <i class="fa-solid fa-dumbbell text-[10px]"></i>
                                   {{ currentExercise.muscle_group }}
                               </span>
                           </div>
                           <div v-else class="mb-6"></div>
                           <div class="flex items-center gap-6">
-                              <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl">
-                                  <div class="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                                      <i class="fa-solid fa-layer-group text-blue-400 text-xs"></i>
+                              <div class="flex items-center gap-3 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 px-4 py-2 rounded-2xl border border-cyan-400/20 backdrop-blur-sm shadow-xl">
+                                  <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                                      <i class="fa-solid fa-layer-group text-cyan-300 text-xs"></i>
                                   </div>
                                   <div class="flex flex-col">
                                       <span class="text-[10px] text-slate-500 uppercase font-bold">进度</span>
                                       <span class="text-sm font-bold text-white">第 {{ currentExercise.current_sets }} <span class="text-slate-500 font-normal">/ {{ currentExercise.total_sets }} 组</span></span>
                                   </div>
                               </div>
-                              <div class="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-2xl border border-white/5 backdrop-blur-sm shadow-xl">
-                                  <div class="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                                      <i class="fa-solid fa-repeat text-emerald-400 text-xs"></i>
+                              <div class="flex items-center gap-3 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 px-4 py-2 rounded-2xl border border-emerald-400/20 backdrop-blur-sm shadow-xl">
+                                  <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                      <i class="fa-solid fa-repeat text-emerald-300 text-xs"></i>
                                   </div>
                                   <div class="flex flex-col">
                                       <span class="text-[10px] text-slate-500 uppercase font-bold">目标</span>
@@ -200,7 +200,7 @@
                       </div>
 
                       <!-- 动作示例 GIF -->
-                      <div v-if="currentExercise.gif_url && !cameraActive" class="relative w-full overflow-hidden mb-10 group rounded-3xl border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-slate-900/50 backdrop-blur-sm">
+                      <div v-if="currentExercise.gif_url && !cameraActive" class="relative w-full overflow-hidden mb-10 group rounded-3xl border border-cyan-500/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] shadow-cyan-500/10 bg-gradient-to-br from-indigo-900/40 to-slate-900/50 backdrop-blur-sm">
                           <!-- 背景虚化层 (填充比例差异，增加视觉深度) -->
                           <div class="absolute inset-0 scale-125 blur-3xl opacity-40 pointer-events-none">
                               <img :src="currentExercise.gif_url" class="w-full h-full object-cover" />
@@ -215,7 +215,7 @@
                               
                               <!-- 顶部标签 -->
                               <div class="absolute top-4 left-4 z-20">
-                                  <div class="flex items-center gap-2 px-3.5 py-1.5 bg-blue-500/80 backdrop-blur-xl text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-xl border border-white/20">
+                                  <div class="flex items-center gap-2 px-3.5 py-1.5 bg-gradient-to-r from-cyan-500/90 to-blue-500/90 backdrop-blur-xl text-white rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-xl shadow-cyan-500/50 border border-cyan-200/30">
                                       <span class="flex h-2 w-2 relative">
                                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
                                           <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
@@ -231,16 +231,16 @@
 
                       <!-- 视频/进度 切换区域 -->
                       <div class="relative w-full aspect-video mb-8 group" v-if="cameraActive">
-                          <div class="absolute inset-0 bg-slate-900 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                          <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/80 to-slate-900 rounded-3xl overflow-hidden border border-cyan-500/20 shadow-2xl shadow-cyan-500/10">
                               <video ref="videoElement" autoplay playsinline class="w-full h-full object-cover"></video>
                               <img v-if="annotatedImage" :src="annotatedImage" class="absolute inset-0 w-full h-full object-cover" />
                               
                               <!-- 实时状态叠加 -->
                               <div class="absolute top-4 left-4 flex flex-col gap-2">
                                   <div :class="['px-4 py-2 rounded-xl font-bold text-sm shadow-lg backdrop-blur-md', 
-                                      poseState === 'UP' ? 'bg-blue-500/80 text-white' : 
-                                      poseState === 'DOWN' ? 'bg-amber-500/80 text-white' : 
-                                      'bg-slate-700/80 text-slate-300']">
+                                      poseState === 'UP' ? 'bg-gradient-to-r from-cyan-500/90 to-blue-500/90 text-white shadow-lg shadow-cyan-500/50' : 
+                                      poseState === 'DOWN' ? 'bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-white shadow-lg shadow-amber-500/50' : 
+                                      'bg-indigo-800/70 text-slate-300']">
                                       {{ getPoseStateText() }}
                                   </div>
                                   <div class="bg-black/50 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
@@ -258,7 +258,7 @@
                       <!-- 环形进度 (当摄像头未开启时) -->
                       <div v-else class="relative w-56 h-56 mx-auto mb-12 flex items-center justify-center">
                           <!-- 背景阴影光效 -->
-                          <div class="absolute inset-4 rounded-full blur-2xl opacity-20" :class="isCompleted ? 'bg-emerald-500' : 'bg-blue-500'"></div>
+                          <div class="absolute inset-4 rounded-full blur-2xl opacity-30" :class="isCompleted ? 'bg-emerald-400' : 'bg-cyan-400'"></div>
                           
                           <svg class="w-full h-full transform -rotate-90 relative z-10">
                               <defs>
@@ -293,9 +293,9 @@
                       <div v-if="cameraActive && feedback.length > 0" class="mb-6 space-y-2">
                           <div v-for="(item, fIndex) in feedback.slice(0, 2)" :key="fIndex" 
                                :class="['flex items-center gap-3 p-3 rounded-2xl border text-xs transition-all',
-                                        item.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
-                                        item.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 
-                                        'bg-blue-500/10 border-blue-500/20 text-blue-400']">
+                                        item.type === 'success' ? 'bg-gradient-to-br from-emerald-500/15 to-teal-500/10 border-emerald-400/30 text-emerald-300 shadow-lg shadow-emerald-500/20' : 
+                                        item.type === 'warning' ? 'bg-gradient-to-br from-amber-500/15 to-orange-500/10 border-amber-400/30 text-amber-300 shadow-lg shadow-amber-500/20' : 
+                                        'bg-gradient-to-br from-cyan-500/15 to-blue-500/10 border-cyan-400/30 text-cyan-300 shadow-lg shadow-cyan-500/20']">
                               <i :class="['fa-solid', item.type === 'success' ? 'fa-circle-check' : (item.type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-info')]"></i>
                               <span>{{ item.message }}</span>
                           </div>
@@ -310,20 +310,20 @@
                       </button>
 
                       <!-- 动作要领 -->
-                      <div class="bg-slate-900/40 rounded-3xl p-6 border border-white/5 mb-6">
+                      <div class="bg-gradient-to-br from-indigo-900/40 to-purple-900/30 rounded-3xl p-6 border border-cyan-500/20 mb-6 shadow-lg">
                           <div class="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 tracking-widest uppercase">
                               <i class="fa-solid fa-list-check text-blue-400"></i> 要领
                           </div>
                           <div class="space-y-3 max-h-32 overflow-y-auto pr-2">
                               <div v-for="(tip, tIndex) in parseTips(currentExercise.tips)" :key="tIndex" class="flex items-start gap-3">
-                                  <div class="mt-2 w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                  <div class="mt-2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-lg shadow-cyan-500/50"></div>
                                   <p class="text-sm text-slate-300 leading-snug text-left">{{ tip }}</p>
                               </div>
                           </div>
                       </div>
 
                       <!-- 训练历史 -->
-                      <div class="bg-slate-900/40 rounded-3xl p-6 border border-white/5">
+                      <div class="bg-gradient-to-br from-indigo-900/40 to-purple-900/30 rounded-3xl p-6 border border-cyan-500/20 shadow-lg">
                           <div class="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 tracking-widest uppercase">
                               <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> 训练历史
                           </div>
@@ -334,12 +334,12 @@
                           <div v-else class="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                               <div v-for="(log, logIndex) in exerciseHistory" :key="log.id" 
                                    @click="viewLogDetails(log)"
-                                   class="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-white/5 hover:border-blue-500/50 transition-all cursor-pointer group">
+                                   class="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-indigo-900/50 to-slate-800/50 border border-cyan-500/20 hover:border-cyan-400/60 hover:shadow-lg hover:shadow-cyan-500/20 transition-all cursor-pointer group">
                                   <div class="flex-1">
                                       <div class="flex items-center gap-2 mb-1">
                                           <span class="text-xs text-slate-400">{{ formatDate(log.start_time) }}</span>
                                           <span :class="['px-2 py-0.5 rounded-full text-[9px] font-bold',
-                                              log.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' :
+                                              log.status === 'completed' ? 'bg-gradient-to-r from-emerald-500/30 to-teal-500/20 text-emerald-300 border border-emerald-400/30' :
                                               log.status === 'interrupted' ? 'bg-amber-500/20 text-amber-400' :
                                               'bg-red-500/20 text-red-400']">
                                               {{ log.status === 'completed' ? '已完成' : log.status === 'interrupted' ? '已中断' : '失败' }}
@@ -362,7 +362,7 @@
                                   </div>
                                   <div v-if="log.ai_score !== null && log.ai_score !== undefined" 
                                        class="ml-3 flex flex-col items-end gap-2">
-                                      <div class="px-2 py-1 rounded-lg bg-blue-500/20 border border-blue-500/30">
+                                      <div class="px-2 py-1 rounded-lg bg-gradient-to-r from-cyan-500/30 to-blue-500/20 border border-cyan-400/40 shadow-lg shadow-cyan-500/20">
                                           <span class="text-xs font-bold text-blue-400">{{ Math.round(log.ai_score) }}</span>
                                       </div>
                                       <button @click="deleteLog(log.id, $event)" 
@@ -390,39 +390,39 @@
       <div class="h-32 shrink-0"></div>
 
        <!-- 底部控制 -->
-       <footer class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 py-8 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent z-40 flex items-center justify-between gap-4">
-          <button @click="prev" :disabled="currentIndex === 0" class="w-14 h-14 rounded-2xl glass-card flex items-center justify-center disabled:opacity-20 transition-all text-white">
+       <footer class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 py-8 bg-gradient-to-t from-indigo-950 via-purple-950/80 to-transparent z-40 flex items-center justify-between gap-4">
+          <button @click="prev" :disabled="currentIndex === 0" class="w-14 h-14 rounded-2xl glass-card flex items-center justify-center disabled:opacity-20 transition-all text-white hover:scale-110 hover:shadow-lg hover:shadow-cyan-500/30">
               <i class="fa-solid fa-chevron-left"></i>
           </button>
           
           <div class="flex-1 flex justify-center gap-4">
-              <label class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer" title="上传视频分析">
+              <label class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-cyan-300 transition-all hover:scale-110 hover:shadow-lg hover:shadow-cyan-500/30 cursor-pointer" title="上传视频分析">
                   <i class="fa-solid fa-video"></i>
                   <input type="file" accept="video/*" class="hidden" @change="handleVideoUpload" />
               </label>
-              <router-link to="/analyzer" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="抖音分析">
+              <router-link to="/analyzer" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-cyan-300 transition-all hover:scale-110 hover:shadow-lg hover:shadow-cyan-500/30" title="抖音分析">
                   <i class="fa-brands fa-tiktok"></i>
               </router-link>
-              <router-link to="/muscle" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="3D肌肉图">
+              <router-link to="/muscle" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-cyan-300 transition-all hover:scale-110 hover:shadow-lg hover:shadow-cyan-500/30" title="3D肌肉图">
                   <i class="fa-solid fa-child"></i>
               </router-link>
           </div>
 
-          <button @click="next" :disabled="currentIndex === exercises.length - 1" class="w-14 h-14 rounded-2xl glass-card flex items-center justify-center disabled:opacity-20 transition-all text-white">
+          <button @click="next" :disabled="currentIndex === exercises.length - 1" class="w-14 h-14 rounded-2xl glass-card flex items-center justify-center disabled:opacity-20 transition-all text-white hover:scale-110 hover:shadow-lg hover:shadow-cyan-500/30">
               <i class="fa-solid fa-chevron-right"></i>
           </button>
       </footer>
 
       <!-- 完成总结弹窗 -->
       <transition name="fade">
-          <div v-if="showSummary" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 text-center text-white">
+          <div v-if="showSummary" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 text-center text-white" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);">
               <div class="max-w-md">
                   <div class="text-6xl mb-6">🏆</div>
                   <h2 class="text-3xl font-bold mb-4">太棒了！</h2>
                   <p class="text-slate-400 mb-8">您已完成今日所有训练项目。</p>
 
                   <!-- AI 评价区域 -->
-                  <div v-if="evaluationResult" class="bg-slate-800/50 rounded-3xl p-6 mb-6 border border-white/10">
+                  <div v-if="evaluationResult" class="bg-gradient-to-br from-indigo-900/60 to-purple-900/50 rounded-3xl p-6 mb-6 border border-cyan-500/30 shadow-xl shadow-cyan-500/20">
                       <div class="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 tracking-widest uppercase">
                           <i class="fa-solid fa-brain text-blue-400"></i> AI 训练评价
                       </div>
@@ -436,7 +436,7 @@
                       <!-- 标准度 -->
                       <div class="flex items-center justify-center gap-2 mb-4">
                           <span :class="['px-3 py-1 rounded-full text-xs font-bold',
-                            evaluationResult.is_standard ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                            evaluationResult.is_standard ? 'bg-gradient-to-r from-emerald-500/30 to-teal-500/20 text-emerald-300 border border-emerald-400/40 shadow-lg shadow-emerald-500/30' : 'bg-gradient-to-r from-amber-500/30 to-orange-500/20 text-amber-300 border border-amber-400/40 shadow-lg shadow-amber-500/30']">
                               {{ evaluationResult.is_standard ? '动作标准' : '需要改进' }}
                           </span>
                       </div>
@@ -456,7 +456,7 @@
                       <!-- 改进建议 -->
                       <div v-if="evaluationResult.improvement_advice" class="mb-4">
                           <div class="text-xs text-slate-500 mb-2 uppercase tracking-widest">改进建议</div>
-                          <div class="text-sm text-slate-300 bg-slate-700/50 p-3 rounded-lg leading-relaxed">
+                          <div class="text-sm text-slate-300 bg-gradient-to-br from-indigo-800/50 to-slate-700/50 p-3 rounded-lg leading-relaxed border border-indigo-600/30">
                               {{ evaluationResult.improvement_advice }}
                           </div>
                       </div>
@@ -470,7 +470,7 @@
 
                   <!-- 上传中状态 (AI分析进度条) -->
                   <div v-if="uploadingEvaluation" class="mb-6">
-                      <div class="bg-slate-800/50 rounded-3xl p-6 border border-white/10">
+                      <div class="bg-gradient-to-br from-indigo-900/60 to-purple-900/50 rounded-3xl p-6 border border-cyan-500/30 shadow-xl shadow-cyan-500/20">
                           <div class="flex items-center justify-between mb-4">
                               <div class="flex items-center gap-2 text-xs font-bold text-blue-400 tracking-widest uppercase">
                                   <i class="fa-solid fa-brain animate-pulse"></i> AI 智能分析中
@@ -479,7 +479,7 @@
                           </div>
                           
                           <!-- 进度条背景 -->
-                          <div class="w-full h-3 bg-slate-700 rounded-full overflow-hidden mb-4 shadow-inner">
+                          <div class="w-full h-3 bg-indigo-950/60 rounded-full overflow-hidden mb-4 shadow-inner border border-cyan-500/20">
                               <!-- 进度条填充 -->
                               <div class="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all duration-500 ease-out"
                                    :style="{ width: `${evaluationProgress}%` }">
@@ -494,10 +494,10 @@
 
                   <!-- 操作按钮 -->
                   <div class="flex gap-3">
-                      <button @click="resetWorkout" class="flex-1 px-6 py-3 bg-slate-700/50 hover:bg-slate-600/50 text-white rounded-2xl font-bold transition-all">
-                          重新开始
+                      <button @click="resetWorkout" class="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-700/60 to-slate-700/60 hover:from-indigo-600/70 hover:to-slate-600/70 text-white rounded-2xl font-bold transition-all border border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/30">
+                        重新开始
                       </button>
-                      <button @click="showSummary = false" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all">
+                      <button @click="showSummary = false" class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white rounded-2xl font-bold transition-all shadow-lg shadow-cyan-500/50 hover:shadow-cyan-400/60 hover:scale-105">
                           完成
                       </button>
                   </div>
@@ -507,8 +507,8 @@
 
       <!-- 训练记录详情弹窗 -->
       <transition name="fade">
-          <div v-if="showLogDetails && selectedLog" class="fixed inset-0 z-[70] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 text-white">
-              <div class="max-w-md w-full bg-slate-900 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+          <div v-if="showLogDetails && selectedLog" class="fixed inset-0 z-[70] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6 text-white" style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);">
+              <div class="max-w-md w-full bg-gradient-to-br from-indigo-900/90 to-purple-900/90 rounded-[2.5rem] border border-cyan-400/30 overflow-hidden shadow-2xl shadow-cyan-500/20 backdrop-blur-xl">
                   <div class="p-8">
                       <div class="flex items-center justify-between mb-8">
                           <div>
@@ -545,7 +545,7 @@
                           </div>
 
                           <!-- AI 反馈 -->
-                          <div v-if="selectedLog.ai_feedback" class="bg-blue-500/5 border border-blue-500/10 rounded-3xl p-6">
+                          <div v-if="selectedLog.ai_feedback" class="bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-400/20 rounded-3xl p-6 shadow-lg shadow-cyan-500/10">
                               <div class="flex items-center gap-2 mb-4 text-[10px] font-bold text-blue-400 tracking-widest uppercase">
                                   <i class="fa-solid fa-brain"></i> AI 教练反馈
                               </div>
@@ -566,7 +566,7 @@
                           </div>
                       </div>
 
-                      <button @click="showLogDetails = false" class="w-full mt-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition-all">
+                      <button @click="showLogDetails = false" class="w-full mt-8 py-4 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border border-cyan-400/30 text-white rounded-2xl font-bold transition-all hover:shadow-lg hover:shadow-cyan-500/30">
                           我知道了
                       </button>
                   </div>
@@ -1437,9 +1437,10 @@ export default {
 
 <style scoped>
 .glass-card {
-  background: rgba(220, 210, 250, 0.2);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .slide-right-enter-active, .slide-right-leave-active,
@@ -1480,22 +1481,24 @@ export default {
  /* 自定义滚动条样式 */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(45, 212, 191, 0.9) transparent;
+  scrollbar-color: rgba(34, 211, 238, 0.9) transparent;
 }
  .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
  }
  .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(30, 27, 75, 0.4);
   border-radius: 999px;
  }
  .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.85), rgba(59, 130, 246, 0.85));
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.9), rgba(59, 130, 246, 0.9));
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(30, 27, 75, 0.5);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
  }
  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 1), rgba(96, 165, 250, 1));
+  background: linear-gradient(180deg, rgba(103, 232, 249, 1), rgba(96, 165, 250, 1));
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.8);
  }
  </style>
 

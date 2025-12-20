@@ -30,14 +30,14 @@
         <div class="grid grid-cols-2 gap-4">
           <div v-for="achievement in performanceAchievements" :key="achievement.id"
                :class="['achievement-card p-5 rounded-3xl border-2 transition-all cursor-pointer group',
-                        achievement.unlocked ? 'bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/50 hover:border-blue-400' : 
-                        'bg-slate-800/50 border-slate-700/50 hover:border-slate-600']"
+                        achievement.unlocked ? 'bg-gradient-to-br from-cyan-500/25 to-blue-600/15 border-cyan-400/60 hover:border-cyan-300 hover:shadow-xl hover:shadow-cyan-500/30' : 
+                        'bg-gradient-to-br from-indigo-900/30 to-slate-800/50 border-indigo-700/40 hover:border-indigo-600']"
                @click="showAchievementDetail(achievement)">
             <div class="flex flex-col items-center text-center">
               <!-- 勋章图标 -->
               <div :class="['w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all',
-                           achievement.unlocked ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50' : 
-                           'bg-slate-700/50']">
+                           achievement.unlocked ? 'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-2xl shadow-cyan-500/60' : 
+                           'bg-indigo-900/40']">
                 <i :class="[achievement.icon, 'text-3xl',
                            achievement.unlocked ? 'text-white' : 'text-slate-600']"></i>
               </div>
@@ -48,13 +48,13 @@
               </h3>
               <!-- 进度条 -->
               <div v-if="!achievement.unlocked && achievement.progress !== undefined" 
-                   class="w-full bg-slate-700/50 rounded-full h-1.5 mb-2">
-                <div class="bg-blue-500 h-full rounded-full transition-all duration-500"
+                   class="w-full bg-indigo-900/40 rounded-full h-1.5 mb-2">
+                <div class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full transition-all duration-500 shadow-lg shadow-cyan-500/50"
                      :style="{ width: `${Math.min(achievement.progress, 100)}%` }"></div>
               </div>
               <!-- 解锁状态 -->
               <div v-if="achievement.unlocked" 
-                   class="flex items-center gap-1 text-[10px] text-blue-400 font-bold uppercase tracking-widest">
+                   class="flex items-center gap-1 text-[10px] text-cyan-300 font-bold uppercase tracking-widest">
                 <i class="fa-solid fa-check-circle"></i>
                 <span>已解锁</span>
               </div>
@@ -76,14 +76,14 @@
         <div class="grid grid-cols-2 gap-4">
           <div v-for="achievement in evolutionAchievements" :key="achievement.id"
                :class="['achievement-card p-5 rounded-3xl border-2 transition-all cursor-pointer group',
-                        achievement.unlocked ? 'bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/50 hover:border-purple-400' : 
-                        'bg-slate-800/50 border-slate-700/50 hover:border-slate-600']"
+                        achievement.unlocked ? 'bg-gradient-to-br from-purple-500/25 to-fuchsia-600/15 border-purple-400/60 hover:border-purple-300 hover:shadow-xl hover:shadow-purple-500/30' : 
+                        'bg-gradient-to-br from-indigo-900/30 to-slate-800/50 border-indigo-700/40 hover:border-indigo-600']"
                @click="showAchievementDetail(achievement)">
             <div class="flex flex-col items-center text-center">
               <!-- 勋章图标 -->
               <div :class="['w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all relative',
-                           achievement.unlocked ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50' : 
-                           'bg-slate-700/50']">
+                           achievement.unlocked ? 'bg-gradient-to-br from-purple-400 to-fuchsia-500 shadow-2xl shadow-purple-500/60' : 
+                           'bg-indigo-900/40']">
                 <i :class="[achievement.icon, 'text-3xl',
                            achievement.unlocked ? 'text-white' : 'text-slate-600']"></i>
                 <!-- 稀有标识 -->
@@ -99,13 +99,13 @@
               </h3>
               <!-- 进度条 -->
               <div v-if="!achievement.unlocked && achievement.progress !== undefined" 
-                   class="w-full bg-slate-700/50 rounded-full h-1.5 mb-2">
-                <div class="bg-purple-500 h-full rounded-full transition-all duration-500"
+                   class="w-full bg-indigo-900/40 rounded-full h-1.5 mb-2">
+                <div class="bg-gradient-to-r from-purple-400 to-fuchsia-500 h-full rounded-full transition-all duration-500 shadow-lg shadow-purple-500/50"
                      :style="{ width: `${Math.min(achievement.progress, 100)}%` }"></div>
               </div>
               <!-- 解锁状态 -->
               <div v-if="achievement.unlocked" 
-                   class="flex items-center gap-1 text-[10px] text-purple-400 font-bold uppercase tracking-widest">
+                   class="flex items-center gap-1 text-[10px] text-purple-300 font-bold uppercase tracking-widest">
                 <i class="fa-solid fa-check-circle"></i>
                 <span>已解锁</span>
               </div>
@@ -127,14 +127,14 @@
         <div class="grid grid-cols-2 gap-4">
           <div v-for="achievement in otherAchievements" :key="achievement.id"
                :class="['achievement-card p-5 rounded-3xl border-2 transition-all cursor-pointer group',
-                        achievement.unlocked ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border-emerald-500/50 hover:border-emerald-400' : 
-                        'bg-slate-800/50 border-slate-700/50 hover:border-slate-600']"
+                        achievement.unlocked ? 'bg-gradient-to-br from-emerald-400/25 to-teal-600/15 border-emerald-400/60 hover:border-emerald-300 hover:shadow-xl hover:shadow-emerald-500/30' : 
+                        'bg-gradient-to-br from-indigo-900/30 to-slate-800/50 border-indigo-700/40 hover:border-indigo-600']"
                @click="showAchievementDetail(achievement)">
             <div class="flex flex-col items-center text-center">
               <!-- 勋章图标 -->
               <div :class="['w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all',
-                           achievement.unlocked ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/50' : 
-                           'bg-slate-700/50']">
+                           achievement.unlocked ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-2xl shadow-emerald-500/60' : 
+                           'bg-indigo-900/40']">
                 <i :class="[achievement.icon, 'text-3xl',
                            achievement.unlocked ? 'text-white' : 'text-slate-600']"></i>
               </div>
@@ -145,13 +145,13 @@
               </h3>
               <!-- 进度条 -->
               <div v-if="!achievement.unlocked && achievement.progress !== undefined" 
-                   class="w-full bg-slate-700/50 rounded-full h-1.5 mb-2">
-                <div class="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                   class="w-full bg-indigo-900/40 rounded-full h-1.5 mb-2">
+                <div class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full rounded-full transition-all duration-500 shadow-lg shadow-emerald-500/50"
                      :style="{ width: `${Math.min(achievement.progress, 100)}%` }"></div>
               </div>
               <!-- 解锁状态 -->
               <div v-if="achievement.unlocked" 
-                   class="flex items-center gap-1 text-[10px] text-emerald-400 font-bold uppercase tracking-widest">
+                   class="flex items-center gap-1 text-[10px] text-emerald-300 font-bold uppercase tracking-widest">
                 <i class="fa-solid fa-check-circle"></i>
                 <span>已解锁</span>
               </div>
@@ -169,7 +169,7 @@
       <div v-if="selectedAchievement" 
            class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-6"
            @click.self="selectedAchievement = null">
-        <div class="max-w-md w-full bg-slate-900 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+        <div class="max-w-md w-full bg-gradient-to-br from-indigo-900/90 to-purple-900/90 rounded-[2.5rem] border border-cyan-400/20 overflow-hidden shadow-2xl shadow-cyan-500/20 backdrop-blur-xl">
           <div class="p-8">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-2xl font-bold text-white">成就详情</h2>
@@ -183,10 +183,10 @@
               <!-- 大图标 -->
               <div :class="['w-32 h-32 rounded-full flex items-center justify-center mx-auto mb-4',
                            selectedAchievement.unlocked ? 
-                           (selectedAchievement.category === 'evolution' ? 'bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/50' :
-                            selectedAchievement.category === 'other' ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/50' :
-                            'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50') :
-                           'bg-slate-700/50']">
+                           (selectedAchievement.category === 'evolution' ? 'bg-gradient-to-br from-purple-400 to-fuchsia-500 shadow-2xl shadow-purple-500/60' :
+                            selectedAchievement.category === 'other' ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-2xl shadow-emerald-500/60' :
+                            'bg-gradient-to-br from-cyan-400 to-blue-500 shadow-2xl shadow-cyan-500/60') :
+                           'bg-indigo-900/40']">
                 <i :class="[selectedAchievement.icon, 'text-5xl',
                            selectedAchievement.unlocked ? 'text-white' : 'text-slate-600']"></i>
               </div>
@@ -195,16 +195,16 @@
             </div>
 
             <!-- 进度信息 -->
-            <div v-if="selectedAchievement.progress !== undefined" class="bg-slate-800/50 rounded-2xl p-4 mb-6">
+            <div v-if="selectedAchievement.progress !== undefined" class="bg-indigo-900/40 rounded-2xl p-4 mb-6 border border-cyan-500/20">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-slate-500 uppercase font-bold tracking-widest">完成进度</span>
+                <span class="text-xs text-slate-400 uppercase font-bold tracking-widest">完成进度</span>
                 <span class="text-sm font-bold text-white">{{ Math.round(selectedAchievement.progress) }}%</span>
               </div>
-              <div class="w-full bg-slate-700/50 rounded-full h-2">
+              <div class="w-full bg-slate-900/50 rounded-full h-2">
                 <div :class="['h-full rounded-full transition-all duration-500',
-                             selectedAchievement.category === 'evolution' ? 'bg-purple-500' :
-                             selectedAchievement.category === 'other' ? 'bg-emerald-500' :
-                             'bg-blue-500']"
+                             selectedAchievement.category === 'evolution' ? 'bg-gradient-to-r from-purple-400 to-fuchsia-500 shadow-lg shadow-purple-500/50' :
+                             selectedAchievement.category === 'other' ? 'bg-gradient-to-r from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/50' :
+                             'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/50']"
                      :style="{ width: `${Math.min(selectedAchievement.progress, 100)}%` }"></div>
               </div>
             </div>
@@ -216,7 +216,7 @@
             </div>
 
             <button @click="selectedAchievement = null" 
-                    class="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition-all">
+                    class="w-full py-4 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/30 hover:to-blue-500/30 border border-cyan-400/30 text-white rounded-2xl font-bold transition-all hover:shadow-lg hover:shadow-cyan-500/30">
               我知道了
             </button>
           </div>
@@ -448,26 +448,28 @@ export default {
 /* 自定义滚动条样式 */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(45, 212, 191, 0.9) transparent;
+  scrollbar-color: rgba(34, 211, 238, 0.9) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(30, 27, 75, 0.4);
   border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.85), rgba(59, 130, 246, 0.85));
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.9), rgba(59, 130, 246, 0.9));
   border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(30, 27, 75, 0.5);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 1), rgba(96, 165, 250, 1));
+  background: linear-gradient(180deg, rgba(103, 232, 249, 1), rgba(96, 165, 250, 1));
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.8);
 }
 </style>
 
