@@ -1,76 +1,85 @@
 <template>
-  <div class="pose-analyzer">
-    <div class="card">
-      <h2 class="card-title">🤖 AI动作指导</h2>
-      <p class="card-subtitle">打开摄像头，AI将实时分析您的动作并提供指导</p>
+  <div class="w-full max-w-2xl h-full max-h-[900px] flex flex-col p-6 relative overflow-hidden">
+    <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl overflow-y-auto">
+      <header class="mb-8">
+        <router-link to="/" class="text-blue-400 text-sm font-semibold tracking-widest uppercase mb-4 block hover:underline">
+          <i class="fa-solid fa-arrow-left mr-2"></i> 返回主页
+        </router-link>
+        <h1 class="text-4xl font-bold text-white mb-2 leading-tight">AI动作指导</h1>
+        <p class="text-slate-400 text-sm">打开摄像头，AI将实时分析您的动作并提供指导</p>
+      </header>
       
-      <div class="camera-section">
-        <div class="video-container">
+      <div class="mb-8">
+        <div class="relative w-full aspect-video bg-slate-900 rounded-3xl overflow-hidden border border-white/10">
           <video
             ref="videoElement"
             autoplay
             playsinline
-            class="video-preview"
+            class="w-full h-full object-cover"
           ></video>
           <canvas
             ref="canvasElement"
-            class="canvas-overlay"
+            class="absolute inset-0 w-full h-full pointer-events-none"
           ></canvas>
-          <div v-if="!cameraActive" class="camera-placeholder">
-            <p>📷 点击下方按钮启动摄像头</p>
+          <div v-if="!cameraActive" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+            <i class="fa-solid fa-camera text-4xl text-slate-700 mb-4"></i>
+            <p class="text-slate-500 text-sm">点击下方按钮启动摄像头</p>
           </div>
         </div>
         
-        <div class="controls">
+        <div class="flex gap-4 mt-6">
           <button
             v-if="!cameraActive"
             @click="startCamera"
-            class="control-btn start-btn"
+            class="flex-1 py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-bold text-white transition-all shadow-lg shadow-blue-500/20"
           >
-            🎥 启动摄像头
+            <i class="fa-solid fa-video mr-2"></i> 启动摄像头
           </button>
           <button
             v-else
             @click="stopCamera"
-            class="control-btn stop-btn"
+            class="flex-1 py-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-2xl font-bold transition-all border border-red-500/20"
           >
-            ⏹️ 停止摄像头
+            <i class="fa-solid fa-stop mr-2"></i> 停止摄像头
           </button>
           <button
             v-if="cameraActive"
             @click="captureAndAnalyze"
             :disabled="analyzing"
-            class="control-btn analyze-btn"
+            class="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-2xl font-bold text-white transition-all shadow-lg shadow-emerald-500/20"
           >
-            {{ analyzing ? '分析中...' : '📸 分析当前动作' }}
+            {{ analyzing ? '分析中...' : '📸 分析动作' }}
           </button>
         </div>
       </div>
 
-      <div v-if="error" class="error-message">
-        ❌ {{ error }}
+      <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-sm">
+        {{ error }}
       </div>
 
-      <div v-if="feedback.length > 0" class="feedback-section">
-        <h3 class="feedback-title">AI指导反馈</h3>
-        <div class="feedback-list">
+      <div v-if="feedback.length > 0" class="space-y-6">
+        <h3 class="text-xs font-bold text-slate-500 tracking-widest uppercase">AI指导反馈</h3>
+        <div class="space-y-3">
           <div
             v-for="(item, index) in feedback"
             :key="index"
-            class="feedback-item"
-            :class="item.type"
+            :class="['flex items-center gap-4 p-4 rounded-2xl border transition-all',
+                     item.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 
+                     item.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 
+                     'bg-blue-500/10 border-blue-500/20 text-blue-400']"
           >
-            <span class="feedback-icon">
-              {{ item.type === 'success' ? '✅' : item.type === 'warning' ? '⚠️' : 'ℹ️' }}
-            </span>
-            <span class="feedback-message">{{ item.message }}</span>
+            <i :class="['fa-solid', 
+                        item.type === 'success' ? 'fa-check-circle' : 
+                        item.type === 'warning' ? 'fa-exclamation-triangle' : 
+                        'fa-info-circle']"></i>
+            <span class="text-sm font-medium">{{ item.message }}</span>
           </div>
         </div>
       </div>
 
-      <div v-if="annotatedImage" class="annotated-image-section">
-        <h3 class="feedback-title">姿态标注图</h3>
-        <img :src="annotatedImage" alt="Annotated Pose" class="annotated-image" />
+      <div v-if="annotatedImage" class="mt-8 space-y-4">
+        <h3 class="text-xs font-bold text-slate-500 tracking-widest uppercase">姿态标注图</h3>
+        <img :src="annotatedImage" alt="Annotated Pose" class="w-full rounded-3xl border border-white/10" />
       </div>
     </div>
   </div>
@@ -93,7 +102,6 @@ export default {
     }
   },
   mounted() {
-    // 组件卸载时清理
     this.$nextTick(() => {
       window.addEventListener('beforeunload', this.cleanup)
     })
@@ -157,18 +165,14 @@ export default {
           throw new Error('无法访问视频元素')
         }
 
-        // 设置canvas尺寸
         canvas.width = video.videoWidth
         canvas.height = video.videoHeight
 
-        // 将视频帧绘制到canvas
         const ctx = canvas.getContext('2d')
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-        // 将canvas转换为base64
         const imageData = canvas.toDataURL('image/jpeg', 0.8)
 
-        // 发送到后端分析
         const response = await axios.post('http://localhost:8000/api/analyze-pose/', {
           image: imageData
         })
@@ -197,178 +201,10 @@ export default {
 </script>
 
 <style scoped>
-.pose-analyzer {
-  min-height: calc(100vh - 200px);
-}
-
-.card {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-.card-title {
-  font-size: 2rem;
-  color: #333;
-  margin-bottom: 0.5rem;
-}
-
-.card-subtitle {
-  color: #666;
-  margin-bottom: 2rem;
-}
-
-.camera-section {
-  margin-bottom: 2rem;
-}
-
-.video-container {
-  position: relative;
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto 1.5rem;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-}
-
-.video-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.canvas-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.camera-placeholder {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  text-align: center;
-  font-size: 1.2rem;
-}
-
-.controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.control-btn {
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.start-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.stop-btn {
-  background: #dc3545;
-  color: white;
-}
-
-.analyze-btn {
-  background: #28a745;
-  color: white;
-}
-
-.control-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.control-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-message {
-  background: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #c33;
-}
-
-.feedback-section {
-  margin-top: 2rem;
-}
-
-.feedback-title {
-  font-size: 1.5rem;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.feedback-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.feedback-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 8px;
-  background: #f8f9fa;
-}
-
-.feedback-item.success {
-  background: #d4edda;
-  border-left: 4px solid #28a745;
-}
-
-.feedback-item.warning {
-  background: #fff3cd;
-  border-left: 4px solid #ffc107;
-}
-
-.feedback-item.info {
-  background: #d1ecf1;
-  border-left: 4px solid #17a2b8;
-}
-
-.feedback-icon {
-  font-size: 1.5rem;
-}
-
-.feedback-message {
-  color: #333;
-  font-weight: 500;
-}
-
-.annotated-image-section {
-  margin-top: 2rem;
-}
-
-.annotated-image {
-  width: 100%;
-  max-width: 800px;
-  border-radius: 12px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 </style>
 

@@ -1,59 +1,58 @@
 <template>
-  <div class="douyin-analyzer">
-    <div class="card">
-      <h2 class="card-title">📱 抖音链接分析</h2>
-      <p class="card-subtitle">输入抖音视频或图文链接，获取详细信息</p>
+  <div class="w-full max-w-lg h-full max-h-[800px] flex flex-col p-6 relative overflow-hidden">
+    <div class="glass-card p-8 rounded-[2.5rem] shadow-2xl overflow-y-auto">
+      <header class="mb-8">
+        <router-link to="/" class="text-blue-400 text-sm font-semibold tracking-widest uppercase mb-4 block hover:underline">
+          <i class="fa-solid fa-arrow-left mr-2"></i> 返回主页
+        </router-link>
+        <h1 class="text-4xl font-bold text-white mb-2 leading-tight">抖音分析</h1>
+        <p class="text-slate-400 text-sm">输入链接，获取详细信息</p>
+      </header>
       
-      <div class="input-section">
+      <div class="space-y-4 mb-8">
         <input
           v-model="douyinUrl"
           type="text"
-          placeholder="请输入抖音链接，例如：https://www.douyin.com/video/..."
-          class="url-input"
+          placeholder="请输入抖音链接..."
+          class="w-full bg-slate-900/40 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-blue-500 transition-colors"
         />
-        <button @click="analyzeUrl" :disabled="loading" class="analyze-btn">
+        <button @click="analyzeUrl" :disabled="loading" 
+                class="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-2xl font-bold text-white transition-all shadow-lg shadow-blue-500/20">
           {{ loading ? '分析中...' : '分析链接' }}
         </button>
       </div>
 
-      <div v-if="error" class="error-message">
-        ❌ {{ error }}
+      <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-2xl mb-6 text-sm">
+        {{ error }}
       </div>
 
-      <div v-if="result" class="result-section">
-        <h3 class="result-title">分析结果</h3>
+      <div v-if="result" class="space-y-6">
+        <h3 class="text-xs font-bold text-slate-500 tracking-widest uppercase">分析结果</h3>
         
-        <div class="result-card">
-          <div class="result-item">
-            <span class="label">类型：</span>
-            <span class="value type-badge" :class="result.type">
-              {{ result.type === 'video' ? '🎥 视频' : '🖼️ 图文' }}
+        <div class="bg-slate-900/40 rounded-3xl p-6 border border-white/5 space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-xs text-slate-500 uppercase font-bold">类型</span>
+            <span :class="['px-3 py-1 rounded-full text-[10px] font-bold uppercase', 
+                           result.type === 'video' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400']">
+              {{ result.type === 'video' ? '视频' : '图文' }}
             </span>
           </div>
           
-          <div class="result-item">
-            <span class="label">标题：</span>
-            <span class="value">{{ result.title }}</span>
+          <div class="space-y-1">
+            <span class="text-xs text-slate-500 uppercase font-bold">标题</span>
+            <p class="text-sm text-white leading-relaxed">{{ result.title }}</p>
           </div>
           
-          <div v-if="result.description" class="result-item">
-            <span class="label">描述：</span>
-            <span class="value">{{ result.description }}</span>
+          <div v-if="result.description" class="space-y-1">
+            <span class="text-xs text-slate-500 uppercase font-bold">描述</span>
+            <p class="text-sm text-slate-400 leading-relaxed">{{ result.description }}</p>
           </div>
-          
-          <div v-if="result.video_id" class="result-item">
-            <span class="label">视频ID：</span>
-            <span class="value">{{ result.video_id }}</span>
-          </div>
-          
-          <div v-if="result.video_url" class="result-item">
-            <span class="label">视频链接：</span>
-            <a :href="result.video_url" target="_blank" class="value link">{{ result.video_url }}</a>
-          </div>
-          
-          <div v-if="result.image_url" class="result-item">
-            <span class="label">图片链接：</span>
-            <a :href="result.image_url" target="_blank" class="value link">{{ result.image_url }}</a>
+
+          <div v-if="result.video_url || result.image_url" class="pt-4 border-t border-white/5">
+            <a :href="result.video_url || result.image_url" target="_blank" 
+               class="text-blue-400 text-xs font-bold hover:text-blue-300 transition-colors flex items-center gap-2">
+              查看原始资源 <i class="fa-solid fa-external-link text-[10px]"></i>
+            </a>
           </div>
         </div>
       </div>
@@ -107,141 +106,10 @@ export default {
 </script>
 
 <style scoped>
-.douyin-analyzer {
-  min-height: calc(100vh - 200px);
-}
-
-.card {
-  background: white;
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-}
-
-.card-title {
-  font-size: 2rem;
-  color: #333;
-  margin-bottom: 0.5rem;
-}
-
-.card-subtitle {
-  color: #666;
-  margin-bottom: 2rem;
-}
-
-.input-section {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-}
-
-.url-input {
-  flex: 1;
-  padding: 1rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.3s ease;
-}
-
-.url-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.analyze-btn {
-  padding: 1rem 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.analyze-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-}
-
-.analyze-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-message {
-  background: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #c33;
-}
-
-.result-section {
-  margin-top: 2rem;
-}
-
-.result-title {
-  font-size: 1.5rem;
-  color: #333;
-  margin-bottom: 1rem;
-}
-
-.result-card {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-
-.result-item {
-  display: flex;
-  margin-bottom: 1rem;
-  align-items: flex-start;
-}
-
-.result-item:last-child {
-  margin-bottom: 0;
-}
-
-.label {
-  font-weight: 600;
-  color: #666;
-  min-width: 100px;
-}
-
-.value {
-  color: #333;
-  flex: 1;
-}
-
-.type-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-weight: 600;
-}
-
-.type-badge.video {
-  background: #e3f2fd;
-  color: #1976d2;
-}
-
-.type-badge.image {
-  background: #f3e5f5;
-  color: #7b1fa2;
-}
-
-.link {
-  color: #667eea;
-  text-decoration: none;
-  word-break: break-all;
-}
-
-.link:hover {
-  text-decoration: underline;
+.glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 </style>
 

@@ -2,6 +2,9 @@
   <div class="muscle-3d-viewer">
     <div class="info-panel max-w-sm">
       <div class="mb-6">
+        <router-link to="/" class="text-blue-400 text-xs font-bold uppercase tracking-widest mb-4 inline-flex items-center hover:underline pointer-events-auto">
+          <i class="fa-solid fa-arrow-left mr-2"></i> 返回主页
+        </router-link>
         <h1 class="text-3xl font-black text-white tracking-tighter">ANATOMY<span class="text-blue-500">PRO</span></h1>
         <p class="text-slate-400 text-xs mt-1 uppercase tracking-widest font-bold">专业健身肌肉 3D 映射系统</p>
       </div>
