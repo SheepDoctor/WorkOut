@@ -1,15 +1,79 @@
 import re
 import requests
+import os
+import tempfile
 from bs4 import BeautifulSoup
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 import json
 import cv2
 import mediapipe as mp
 import numpy as np
 from django.http import JsonResponse
 import base64
+from .utils.video_analyzer import VideoAnalyzer
+
+
+from rest_framework import viewsets
+from .models import WorkoutHistory
+from .serializers import WorkoutHistorySerializer
+
+class WorkoutHistoryViewSet(viewsets.ModelViewSet):
+    queryset = WorkoutHistory.objects.all()
+    serializer_class = WorkoutHistorySerializer
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def analyze_video_content(request):
+    """
+    分析上传的视频，提取健身动作
+    """
+    try:
+        video_file = request.FILES.get('video')
+        if not video_file:
+            return Response({
+                'success': False,
+                'error': '请上传视频文件'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 保存临时文件
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+            for chunk in video_file.chunks():
+                temp_video.write(chunk)
+            temp_video_path = temp_video.name
+
+        try:
+            analyzer = VideoAnalyzer()
+            workout_data = analyzer.analyze_video(temp_video_path)
+            
+            if workout_data:
+                return Response({
+                    'success': True,
+                    'data': workout_data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'success': False,
+                    'error': '视频分析失败，请稍后重试'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if os.path.exists(temp_video_path):
+                import time
+                time.sleep(0.2) # 给 Windows 一点时间释放句柄
+                try:
+                    os.remove(temp_video_path)
+                except Exception as e:
+                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # 打印详细堆栈到终端
+        return Response({
+            'success': False,
+            'error': f'服务器内部错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
