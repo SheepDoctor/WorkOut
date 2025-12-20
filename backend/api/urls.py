@@ -12,4 +12,6 @@ urlpatterns = [
     path('analyze-pose/', views.analyze_pose, name='analyze_pose'),
     path('analyze-video/', views.analyze_video_content, name='analyze_video'),
     path('evaluate-complete-training/', views.evaluate_complete_training, name='evaluate_complete_training'),
+    path('achievements/', views.get_achievements, name='get_achievements'),
+    path('muscle-fatigue-stats/', views.get_muscle_fatigue_stats, name='get_muscle_fatigue_stats'),
 ]

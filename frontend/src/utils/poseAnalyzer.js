@@ -680,13 +680,13 @@ export class PoseAnalyzer {
               }
               
               drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-                color: '#00FF00',
-                lineWidth: 2
+                color: 'rgba(224, 224, 224, 0.4)',
+                lineWidth: 1.5
               });
               drawLandmarks(ctx, results.poseLandmarks, {
-                color: '#FF0000',
+                color: 'rgba(255, 255, 255, 0.7)',
                 lineWidth: 1,
-                radius: 3
+                radius: 2
               });
 
               // 如果设置了动作类别，使用 ActionCounter 检测

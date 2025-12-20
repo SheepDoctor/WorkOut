@@ -1,5 +1,5 @@
 <template>
-   <div class="w-full max-w-lg h-full flex flex-col p-6 relative overflow-y-auto custom-scrollbar"
+   <div class="w-full max-w-lg h-full flex flex-col p-6 relative overflow-y-auto custom-scrollbar bg-slate-950/50"
         @touchstart="handleTouchStart"
         @touchend="handleTouchEnd">
 
@@ -34,7 +34,10 @@
               <button @click="showHistory = true" class="text-slate-400 hover:text-white transition-colors">
                   <i class="fa-solid fa-clock-rotate-left"></i>
               </button>
-              <div class="flex gap-1.5">
+              <button v-if="exercises.length > 0" @click="clearWorkout" class="text-slate-400 hover:text-white transition-colors" title="返回初始界面">
+                  <i class="fa-solid fa-house"></i>
+              </button>
+              <div class="flex gap-1.5" v-if="exercises.length > 0">
                   <div v-for="(_, i) in exercises" :key="i"
                        :class="['h-1 rounded-full transition-all duration-300', 
                                 i === currentIndex ? 'w-8 bg-blue-500' : (i < currentIndex ? 'w-4 bg-emerald-500' : 'w-4 bg-slate-700')]">
@@ -132,12 +135,12 @@
       <div class="flex-1 relative">
           <!-- 无数据时的占位图 -->
           <div v-if="exercises.length === 0 && !loading" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-              <div class="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center mb-6 border border-white/5 shadow-inner">
-                  <i class="fa-solid fa-dumbbell text-4xl text-slate-700"></i>
+              <div class="w-32 h-32 bg-slate-700/30 rounded-full flex items-center justify-center mb-6 border border-white/5 shadow-inner">
+                  <i class="fa-solid fa-dumbbell text-4xl text-slate-400"></i>
               </div>
-              <h3 class="text-xl font-bold text-white mb-2">暂无训练计划</h3>
-              <p class="text-sm text-slate-500 mb-8 max-w-[240px]">您还没有创建训练计划，可以上传视频进行 AI 分析，或从历史记录中加载。</p>
-              <label class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-500/25 cursor-pointer">
+              <h3 class="text-xl font-bold text-slate-200 mb-2">暂无训练计划</h3>
+              <p class="text-sm text-slate-400 mb-8 max-w-[240px]">您还没有创建训练计划，可以上传视频进行 AI 分析，或从历史记录中加载。</p>
+              <label class="px-8 py-4 bg-blue-400/60 hover:bg-blue-400/70 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-400/20 cursor-pointer">
                   <i class="fa-solid fa-upload mr-2"></i>
                   上传视频开始
                   <input type="file" accept="video/*" class="hidden" @change="handleVideoUpload" />
@@ -1368,6 +1371,23 @@ export default {
       evaluationProgress.value = 0;
     };
 
+    const clearWorkout = () => {
+      if (cameraActive.value) {
+        stopCamera('interrupted');
+      }
+      exercises.value = [];
+      currentIndex.value = 0;
+      currentWorkoutId.value = null;
+      showSummary.value = false;
+      evaluationResult.value = null;
+      uploadingEvaluation.value = false;
+      evaluationProgress.value = 0;
+      exerciseHistory.value = [];
+      feedback.value = [];
+      annotatedImage.value = null;
+      reps.value = 0;
+    };
+
     // 手势监听
     let touchStartX = 0;
     const handleTouchStart = (e) => touchStartX = e.touches[0].clientX;
@@ -1397,7 +1417,7 @@ export default {
       history, showHistory, exerciseHistory,
       cameraActive, analyzing, error, feedback, annotatedImage, reps, poseState, videoElement,
       startCamera, stopCamera, getPoseStateText,
-      incrementProgress, next, prev, parseTips, resetWorkout,
+      incrementProgress, next, prev, parseTips, resetWorkout, clearWorkout,
       handleTouchStart, handleTouchEnd, handleVideoUpload,
       fetchHistory, saveCurrentWorkout, loadWorkout, deleteHistoryItem, deleteLog, formatDate,
       editingId, editingTitle, startEdit, cancelEdit, saveEdit,
@@ -1410,9 +1430,9 @@ export default {
 
 <style scoped>
 .glass-card {
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(220, 210, 250, 0.2);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .slide-right-enter-active, .slide-right-leave-active,

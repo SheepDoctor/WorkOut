@@ -23,6 +23,35 @@
               </div>
               <p id="muscle-exercises" class="text-slate-100 text-sm font-medium"></p>
             </div>
+            <div id="muscle-fatigue-stats" class="mt-4 pt-4 border-t border-slate-700/50">
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-1 h-3 bg-orange-500 rounded-full"></div>
+                <span class="text-xs font-bold text-slate-300 uppercase">疲劳程度</span>
+              </div>
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">锻炼天数:</span>
+                  <span id="fatigue-days" class="text-slate-100 font-medium">--</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">锻炼次数:</span>
+                  <span id="fatigue-count" class="text-slate-100 font-medium">--</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-400">总次数:</span>
+                  <span id="fatigue-reps" class="text-slate-100 font-medium">--</span>
+                </div>
+                <div class="mt-2">
+                  <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs text-slate-400">疲劳指数</span>
+                    <span id="fatigue-level" class="text-xs font-bold text-orange-400">0%</span>
+                  </div>
+                  <div class="w-full bg-slate-800 rounded-full h-2">
+                    <div id="fatigue-bar" class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -46,6 +75,7 @@
 
 <script>
 import { onMounted, onBeforeUnmount, ref } from 'vue'
+import axios from 'axios'
 
 export default {
   name: 'Muscle3DViewer',
@@ -59,6 +89,7 @@ export default {
     let isDragging = false
     let dragButton = 0 // 0: 左键, 2: 右键
     let previousMousePosition = { x: 0, y: 0 }
+    let muscleFatigueData = {} // 存储肌肉疲劳数据
 
     // 扩展的肌肉数据
     const muscleData = {
@@ -80,6 +111,72 @@ export default {
       "traps": { name: "斜方肌", cat: "背部", desc: "连接颈部和背部，负责肩胛骨的提升和稳定。", exercises: "耸肩、硬拉" },
       "lats": { name: "背阔肌", cat: "背部", desc: "身体最宽的肌肉，赋予身体\"V\"字轮廓。", exercises: "引体向上、划船" },
       "head": { name: "头部", cat: "神经中枢", desc: "保护大脑，包含面部表情肌和咀嚼肌。", exercises: "颈部静态抗阻" }
+    }
+
+    // 根据疲劳程度计算颜色
+    // fatigue_level: 0.0 (无疲劳) -> 1.0 (高疲劳)
+    // 颜色渐变：基础色(0x334155) -> 黄色(0xffa500) -> 红色(0xff0000)
+    function getFatigueColor(fatigueLevel) {
+      const baseColor = { r: 0x33, g: 0x41, b: 0x55 } // 基础蓝色灰色
+      const yellowColor = { r: 0xff, g: 0xa5, b: 0x00 } // 黄色
+      const redColor = { r: 0xff, g: 0x00, b: 0x00 } // 红色
+      
+      if (fatigueLevel <= 0) {
+        return (baseColor.r << 16) | (baseColor.g << 8) | baseColor.b
+      }
+      
+      if (fatigueLevel <= 0.5) {
+        // 从基础色到黄色
+        const t = fatigueLevel / 0.5
+        const r = Math.round(baseColor.r + (yellowColor.r - baseColor.r) * t)
+        const g = Math.round(baseColor.g + (yellowColor.g - baseColor.g) * t)
+        const b = Math.round(baseColor.b + (yellowColor.b - baseColor.b) * t)
+        return (r << 16) | (g << 8) | b
+      } else {
+        // 从黄色到红色
+        const t = (fatigueLevel - 0.5) / 0.5
+        const r = Math.round(yellowColor.r + (redColor.r - yellowColor.r) * t)
+        const g = Math.round(yellowColor.g + (redColor.g - yellowColor.g) * t)
+        const b = Math.round(yellowColor.b + (redColor.b - yellowColor.b) * t)
+        return (r << 16) | (g << 8) | b
+      }
+    }
+
+    // 应用疲劳颜色到肌肉
+    function applyFatigueColors() {
+      if (!muscles.length || !muscleFatigueData) return
+      
+      muscles.forEach(muscle => {
+        const muscleId = muscle.userData.id
+        if (muscleId && muscleFatigueData[muscleId]) {
+          const fatigueLevel = muscleFatigueData[muscleId].fatigue_level || 0
+          const color = getFatigueColor(fatigueLevel)
+          
+          // 只有在非悬停状态下才应用疲劳颜色
+          if (muscle !== hoveredMuscle) {
+            muscle.material.color.setHex(color)
+            // 根据疲劳程度设置发光效果
+            const emissiveIntensity = Math.min(fatigueLevel * 0.3, 0.3)
+            muscle.material.emissive.setHex(
+              Math.round(color * emissiveIntensity) & 0xffffff
+            )
+          }
+        }
+      })
+    }
+
+    // 获取肌肉疲劳数据
+    async function fetchMuscleFatigueData() {
+      try {
+        const response = await axios.get('/api/muscle-fatigue-stats/')
+        if (response.data.success && response.data.muscle_fatigue) {
+          muscleFatigueData = response.data.muscle_fatigue
+          // 应用颜色
+          applyFatigueColors()
+        }
+      } catch (error) {
+        console.error('获取肌肉疲劳数据失败:', error)
+      }
     }
 
     function init() {
@@ -124,6 +221,9 @@ export default {
       modelGroup = new THREE.Group()
       createRealisticHuman()
       scene.add(modelGroup)
+      
+      // 获取肌肉疲劳数据并应用颜色
+      fetchMuscleFatigueData()
 
       // 已移除辅助线网格展示
       // const grid = new THREE.GridHelper(10, 20, 0x1e293b, 0x0f172a)
@@ -275,8 +375,20 @@ export default {
           
           if (hoveredMuscle !== object) {
             if (hoveredMuscle) {
-              hoveredMuscle.material.color.setHex(0x334155)
-              hoveredMuscle.material.emissive.setHex(0x000000)
+              // 恢复悬停前的颜色（可能是疲劳颜色）
+              const prevMuscleId = hoveredMuscle.userData.id
+              if (prevMuscleId && muscleFatigueData[prevMuscleId]) {
+                const fatigueLevel = muscleFatigueData[prevMuscleId].fatigue_level || 0
+                const color = getFatigueColor(fatigueLevel)
+                hoveredMuscle.material.color.setHex(color)
+                const emissiveIntensity = Math.min(fatigueLevel * 0.3, 0.3)
+                hoveredMuscle.material.emissive.setHex(
+                  Math.round(color * emissiveIntensity) & 0xffffff
+                )
+              } else {
+                hoveredMuscle.material.color.setHex(0x334155)
+                hoveredMuscle.material.emissive.setHex(0x000000)
+              }
               hoveredMuscle.scale.multiplyScalar(0.95)
             }
             
@@ -299,6 +411,39 @@ export default {
               if (exercisesEl) exercisesEl.innerText = data.exercises
               if (labelTextEl) labelTextEl.innerText = data.name
               
+              // 显示疲劳数据
+              const muscleId = object.userData.id
+              const fatigueData = muscleFatigueData[muscleId]
+              if (fatigueData) {
+                const daysEl = document.getElementById('fatigue-days')
+                const countEl = document.getElementById('fatigue-count')
+                const repsEl = document.getElementById('fatigue-reps')
+                const levelEl = document.getElementById('fatigue-level')
+                const barEl = document.getElementById('fatigue-bar')
+                
+                if (daysEl) daysEl.innerText = fatigueData.days || 0
+                if (countEl) countEl.innerText = fatigueData.workout_count || 0
+                if (repsEl) repsEl.innerText = fatigueData.total_reps || 0
+                
+                const fatigueLevel = fatigueData.fatigue_level || 0
+                const fatiguePercent = Math.round(fatigueLevel * 100)
+                if (levelEl) levelEl.innerText = `${fatiguePercent}%`
+                if (barEl) barEl.style.width = `${fatiguePercent}%`
+              } else {
+                // 如果没有数据，显示默认值
+                const daysEl = document.getElementById('fatigue-days')
+                const countEl = document.getElementById('fatigue-count')
+                const repsEl = document.getElementById('fatigue-reps')
+                const levelEl = document.getElementById('fatigue-level')
+                const barEl = document.getElementById('fatigue-bar')
+                
+                if (daysEl) daysEl.innerText = '0'
+                if (countEl) countEl.innerText = '0'
+                if (repsEl) repsEl.innerText = '0'
+                if (levelEl) levelEl.innerText = '0%'
+                if (barEl) barEl.style.width = '0%'
+              }
+              
               detailsPanel.style.opacity = "1"
               detailsPanel.style.transform = "translateY(0)"
               if (label) label.style.display = 'block'
@@ -306,8 +451,20 @@ export default {
           }
         } else {
           if (hoveredMuscle) {
-            hoveredMuscle.material.color.setHex(0x334155)
-            hoveredMuscle.material.emissive.setHex(0x000000)
+            // 恢复悬停前的颜色（可能是疲劳颜色）
+            const prevMuscleId = hoveredMuscle.userData.id
+            if (prevMuscleId && muscleFatigueData[prevMuscleId]) {
+              const fatigueLevel = muscleFatigueData[prevMuscleId].fatigue_level || 0
+              const color = getFatigueColor(fatigueLevel)
+              hoveredMuscle.material.color.setHex(color)
+              const emissiveIntensity = Math.min(fatigueLevel * 0.3, 0.3)
+              hoveredMuscle.material.emissive.setHex(
+                Math.round(color * emissiveIntensity) & 0xffffff
+              )
+            } else {
+              hoveredMuscle.material.color.setHex(0x334155)
+              hoveredMuscle.material.emissive.setHex(0x000000)
+            }
             hoveredMuscle.scale.multiplyScalar(1/1.05)
             hoveredMuscle = null
             

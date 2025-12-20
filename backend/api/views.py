@@ -14,10 +14,13 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import base64
+from datetime import datetime, timedelta
+from django.utils import timezone
+from django.db.models import Sum, Count, Q, Max
 from .utils.video_analyzer import VideoAnalyzer
 from .utils.coach_agent import CoachAgent
 from .utils.action_classifier import detect_action, ACTION_CATEGORIES
-from .models import WorkoutPlan, WorkoutLog
+from .models import WorkoutPlan, WorkoutLog, WorkoutExercise
 
 from rest_framework import viewsets
 from .serializers import WorkoutPlanSerializer, WorkoutLogSerializer
@@ -897,5 +900,480 @@ def detect_press(landmarks):
         feedback = "发力中"
         
     return state, avg_angle, feedback
+
+
+@api_view(['GET'])
+def get_achievements(request):
+    """
+    获取用户成就数据
+    计算各种成就的完成情况
+    """
+    try:
+        # 获取所有训练记录
+        all_logs = WorkoutLog.objects.all()
+        all_plans = WorkoutPlan.objects.all()
+        all_exercises = WorkoutExercise.objects.all()
+        
+        achievements = []
+        
+        # 1. 动力源激活 - 完成首次训练
+        first_training = all_logs.filter(status='completed').order_by('start_time').first()
+        first_training_unlocked = first_training is not None
+        first_training_progress = 100 if first_training_unlocked else 0
+        
+        achievements.append({
+            'id': 'first_training',
+            'name': '动力源激活',
+            'description': '完成首次训练，开启你的健身之旅！',
+            'icon': 'fa-solid fa-bolt',
+            'category': 'performance',
+            'unlocked': first_training_unlocked,
+            'progress': first_training_progress,
+            'unlockedAt': first_training.start_time.isoformat() if first_training else None
+        })
+        
+        # 2. 热能管理 - 单次消耗超过 500 大卡
+        # 估算：假设每次动作消耗约 5-10 大卡，需要完成约 50-100 次动作
+        # 这里简化处理：单次训练完成超过 50 次动作
+        high_calorie_logs = all_logs.filter(
+            status='completed',
+            reps_count__gte=50
+        )
+        calorie_500_unlocked = high_calorie_logs.exists()
+        max_reps = all_logs.filter(status='completed').aggregate(max_reps=Max('reps_count'))['max_reps'] or 0
+        calorie_500_progress = min((max_reps / 50) * 100, 100) if max_reps > 0 else 0
+        
+        achievements.append({
+            'id': 'calorie_500',
+            'name': '热能管理',
+            'description': '单次训练消耗超过 500 大卡（完成 50+ 次动作）',
+            'icon': 'fa-solid fa-fire',
+            'category': 'performance',
+            'unlocked': calorie_500_unlocked,
+            'progress': calorie_500_progress,
+            'unlockedAt': high_calorie_logs.order_by('start_time').first().start_time.isoformat() if calorie_500_unlocked else None
+        })
+        
+        # 3. 频率同步 - 连续 7 天完成计划
+        # 检查最近7天的训练记录
+        today = timezone.now().date()
+        seven_days_ago = today - timedelta(days=6)
+        
+        # 获取每天是否有完成的训练
+        daily_completions = {}
+        completed_logs = all_logs.filter(
+            status='completed',
+            start_time__date__gte=seven_days_ago,
+            start_time__date__lte=today
+        )
+        
+        for log in completed_logs:
+            date = log.start_time.date()
+            if date not in daily_completions:
+                daily_completions[date] = True
+        
+        # 检查是否连续7天
+        streak_count = 0
+        max_streak = 0
+        current_streak = 0
+        
+        for i in range(7):
+            check_date = today - timedelta(days=i)
+            if check_date in daily_completions:
+                current_streak += 1
+                max_streak = max(max_streak, current_streak)
+            else:
+                current_streak = 0
+        
+        streak_7_unlocked = max_streak >= 7
+        streak_7_progress = min((max_streak / 7) * 100, 100)
+        
+        achievements.append({
+            'id': 'streak_7',
+            'name': '频率同步',
+            'description': '连续 7 天完成训练计划，保持你的训练节奏！',
+            'icon': 'fa-solid fa-calendar-check',
+            'category': 'performance',
+            'unlocked': streak_7_unlocked,
+            'progress': streak_7_progress,
+            'unlockedAt': None  # 可以进一步计算具体解锁时间
+        })
+        
+        # 4. 人类极限模拟 - 累计举起重量相当于一架波音 747
+        # 波音 747 约 183,500 公斤
+        # 估算：假设每次动作平均举起 50 公斤（包括自身体重），需要约 3,670 次动作
+        # 简化：累计完成 3,670 次动作
+        total_reps = all_logs.filter(status='completed').aggregate(total=Sum('reps_count'))['total'] or 0
+        boeing_747_target = 3670  # 约等于 183,500 公斤 / 50 公斤每次
+        boeing_747_unlocked = total_reps >= boeing_747_target
+        boeing_747_progress = min((total_reps / boeing_747_target) * 100, 100)
+        
+        achievements.append({
+            'id': 'boeing_747',
+            'name': '人类极限模拟',
+            'description': f'累计举起重量相当于一架波音 747（约 183,500 公斤，已完成 {total_reps}/{boeing_747_target} 次动作）',
+            'icon': 'fa-solid fa-plane',
+            'category': 'evolution',
+            'unlocked': boeing_747_unlocked,
+            'progress': boeing_747_progress,
+            'unlockedAt': None
+        })
+        
+        # 5. 赛博格形态 - 全身所有肌肉群均已达到"激活"状态
+        # 检查是否训练过所有主要肌肉群
+        # 从 WorkoutExercise 中获取所有不同的 muscle_group
+        muscle_groups = set(all_exercises.exclude(muscle_group__isnull=True).exclude(muscle_group='').values_list('muscle_group', flat=True))
+        # 主要肌肉群列表（根据3D模型）
+        main_muscle_groups = {
+            '胸部', '背部', '肩部', '手臂', '核心', '腿部', '臀部'
+        }
+        # 检查训练过的肌肉群
+        trained_muscles = set()
+        for exercise in all_exercises.exclude(muscle_group__isnull=True).exclude(muscle_group=''):
+            # 简化匹配逻辑
+            muscle = exercise.muscle_group
+            for main_group in main_muscle_groups:
+                if main_group in muscle or muscle in main_group:
+                    trained_muscles.add(main_group)
+                    break
+        
+        all_muscles_unlocked = len(trained_muscles) >= len(main_muscle_groups)
+        all_muscles_progress = min((len(trained_muscles) / len(main_muscle_groups)) * 100, 100)
+        
+        achievements.append({
+            'id': 'all_muscles',
+            'name': '赛博格形态',
+            'description': f'全身所有肌肉群均已达到"激活"状态（已训练 {len(trained_muscles)}/{len(main_muscle_groups)} 个主要肌群）',
+            'icon': 'fa-solid fa-robot',
+            'category': 'evolution',
+            'unlocked': all_muscles_unlocked,
+            'progress': all_muscles_progress,
+            'unlockedAt': None
+        })
+        
+        # 6. 完美姿态 - 连续 10 次训练获得 AI 评分 90 分以上
+        high_score_logs = all_logs.filter(
+            status='completed',
+            ai_score__gte=90
+        ).order_by('-start_time')[:10]
+        
+        perfect_form_unlocked = high_score_logs.count() >= 10
+        perfect_form_progress = min((high_score_logs.count() / 10) * 100, 100)
+        
+        achievements.append({
+            'id': 'perfect_form',
+            'name': '完美姿态',
+            'description': '连续 10 次训练获得 AI 评分 90 分以上',
+            'icon': 'fa-solid fa-star',
+            'category': 'other',
+            'unlocked': perfect_form_unlocked,
+            'progress': perfect_form_progress,
+            'unlockedAt': high_score_logs[9].start_time.isoformat() if perfect_form_unlocked and high_score_logs.count() >= 10 else None
+        })
+        
+        # 7. 马拉松训练 - 单次训练时长超过 60 分钟
+        long_training_logs = all_logs.filter(
+            status='completed',
+            duration__gte=3600  # 60分钟 = 3600秒
+        )
+        marathon_unlocked = long_training_logs.exists()
+        max_duration = all_logs.filter(status='completed').aggregate(max_dur=Max('duration'))['max_dur'] or 0
+        marathon_progress = min((max_duration / 3600) * 100, 100) if max_duration > 0 else 0
+        
+        achievements.append({
+            'id': 'marathon',
+            'name': '马拉松训练',
+            'description': '单次训练时长超过 60 分钟',
+            'icon': 'fa-solid fa-stopwatch',
+            'category': 'other',
+            'unlocked': marathon_unlocked,
+            'progress': marathon_progress,
+            'unlockedAt': long_training_logs.order_by('start_time').first().start_time.isoformat() if marathon_unlocked else None
+        })
+        
+        # 8. 百次挑战 - 单次训练完成 100 次动作
+        century_logs = all_logs.filter(
+            status='completed',
+            reps_count__gte=100
+        )
+        century_unlocked = century_logs.exists()
+        max_reps_single = all_logs.filter(status='completed').aggregate(max_reps=Max('reps_count'))['max_reps'] or 0
+        century_progress = min((max_reps_single / 100) * 100, 100) if max_reps_single > 0 else 0
+        
+        achievements.append({
+            'id': 'century',
+            'name': '百次挑战',
+            'description': '单次训练完成 100 次动作',
+            'icon': 'fa-solid fa-hundred-points',
+            'category': 'other',
+            'unlocked': century_unlocked,
+            'progress': century_progress,
+            'unlockedAt': century_logs.order_by('start_time').first().start_time.isoformat() if century_unlocked else None
+        })
+        
+        # 9. 月度坚持 - 连续 30 天完成训练计划
+        thirty_days_ago = today - timedelta(days=29)
+        daily_completions_30 = {}
+        completed_logs_30 = all_logs.filter(
+            status='completed',
+            start_time__date__gte=thirty_days_ago,
+            start_time__date__lte=today
+        )
+        
+        for log in completed_logs_30:
+            date = log.start_time.date()
+            if date not in daily_completions_30:
+                daily_completions_30[date] = True
+        
+        max_streak_30 = 0
+        current_streak_30 = 0
+        
+        for i in range(30):
+            check_date = today - timedelta(days=i)
+            if check_date in daily_completions_30:
+                current_streak_30 += 1
+                max_streak_30 = max(max_streak_30, current_streak_30)
+            else:
+                current_streak_30 = 0
+        
+        streak_30_unlocked = max_streak_30 >= 30
+        streak_30_progress = min((max_streak_30 / 30) * 100, 100)
+        
+        achievements.append({
+            'id': 'streak_30',
+            'name': '月度坚持',
+            'description': '连续 30 天完成训练计划',
+            'icon': 'fa-solid fa-calendar-days',
+            'category': 'other',
+            'unlocked': streak_30_unlocked,
+            'progress': streak_30_progress,
+            'unlockedAt': None
+        })
+        
+        # 10. 早起鸟 - 连续 7 天在早上 8 点前完成训练
+        morning_logs = all_logs.filter(
+            status='completed',
+            start_time__hour__lt=8
+        )
+        
+        morning_dates = set()
+        for log in morning_logs:
+            date = log.start_time.date()
+            morning_dates.add(date)
+        
+        morning_streak = 0
+        current_morning_streak = 0
+        for i in range(7):
+            check_date = today - timedelta(days=i)
+            if check_date in morning_dates:
+                current_morning_streak += 1
+                morning_streak = max(morning_streak, current_morning_streak)
+            else:
+                current_morning_streak = 0
+        
+        early_bird_unlocked = morning_streak >= 7
+        early_bird_progress = min((morning_streak / 7) * 100, 100)
+        
+        achievements.append({
+            'id': 'early_bird',
+            'name': '早起鸟',
+            'description': '连续 7 天在早上 8 点前完成训练',
+            'icon': 'fa-solid fa-sun',
+            'category': 'other',
+            'unlocked': early_bird_unlocked,
+            'progress': early_bird_progress,
+            'unlockedAt': None
+        })
+        
+        # 11. 夜猫子 - 连续 7 天在晚上 10 点后完成训练
+        night_logs = all_logs.filter(
+            status='completed',
+            start_time__hour__gte=22
+        )
+        
+        night_dates = set()
+        for log in night_logs:
+            date = log.start_time.date()
+            night_dates.add(date)
+        
+        night_streak = 0
+        current_night_streak = 0
+        for i in range(7):
+            check_date = today - timedelta(days=i)
+            if check_date in night_dates:
+                current_night_streak += 1
+                night_streak = max(night_streak, current_night_streak)
+            else:
+                current_night_streak = 0
+        
+        night_owl_unlocked = night_streak >= 7
+        night_owl_progress = min((night_streak / 7) * 100, 100)
+        
+        achievements.append({
+            'id': 'night_owl',
+            'name': '夜猫子',
+            'description': '连续 7 天在晚上 10 点后完成训练',
+            'icon': 'fa-solid fa-moon',
+            'category': 'other',
+            'unlocked': night_owl_unlocked,
+            'progress': night_owl_progress,
+            'unlockedAt': None
+        })
+        
+        # 12. 动作大师 - 完成过 20 种不同的训练动作
+        unique_actions = set(all_exercises.values_list('name', flat=True))
+        variety_unlocked = len(unique_actions) >= 20
+        variety_progress = min((len(unique_actions) / 20) * 100, 100)
+        
+        achievements.append({
+            'id': 'variety',
+            'name': '动作大师',
+            'description': f'完成过 20 种不同的训练动作（已训练 {len(unique_actions)} 种）',
+            'icon': 'fa-solid fa-dumbbell',
+            'category': 'other',
+            'unlocked': variety_unlocked,
+            'progress': variety_progress,
+            'unlockedAt': None
+        })
+        
+        return Response({
+            'success': True,
+            'achievements': achievements
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'error': str(e),
+            'achievements': []
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def get_muscle_fatigue_stats(request):
+    """
+    统计每个肌肉部位的锻炼数据，用于计算疲劳程度
+    返回每个3D模型肌肉ID的锻炼天数和次数
+    """
+    try:
+        from django.db.models import Count, Sum, Q
+        from collections import defaultdict
+        
+        # 肌肉组到3D模型肌肉ID的映射关系
+        MUSCLE_GROUP_MAPPING = {
+            "手臂（二头肌/三头肌）": ["bicep_l", "bicep_r", "tricep_l", "tricep_r", "forearm_l", "forearm_r"],
+            "肩部": ["deltoid_l", "deltoid_r"],
+            "腿部（股四头肌/腘绳肌）": ["quad_l", "quad_r", "calf_l", "calf_r"],
+            "臀部/后链": ["lats", "traps"],
+            "核心/腹部": ["abs_upper", "abs_lower"],
+            "胸部": ["chest"],  # 可能需要从其他数据推断
+            "背部": ["lats", "traps"],
+        }
+        
+        # 获取所有训练记录
+        all_logs = WorkoutLog.objects.filter(status='completed')
+        
+        # 获取所有训练动作及其肌肉组
+        all_exercises = WorkoutExercise.objects.exclude(muscle_group__isnull=True).exclude(muscle_group='')
+        
+        # 统计每个肌肉组的锻炼数据
+        muscle_group_stats = defaultdict(lambda: {'days': set(), 'count': 0, 'total_reps': 0})
+        
+        # 从训练记录中统计
+        for log in all_logs:
+            muscle_groups_found = set()  # 避免同一log重复统计同一肌肉组
+            
+            # 通过 exercise_id 找到对应的 WorkoutExercise
+            if log.exercise_id:
+                try:
+                    exercise = WorkoutExercise.objects.get(id=log.exercise_id)
+                    if exercise.muscle_group and exercise.muscle_group not in muscle_groups_found:
+                        muscle_group = exercise.muscle_group
+                        muscle_groups_found.add(muscle_group)
+                        # 记录锻炼日期
+                        muscle_group_stats[muscle_group]['days'].add(log.start_time.date())
+                        # 记录锻炼次数
+                        muscle_group_stats[muscle_group]['count'] += 1
+                        # 记录总次数
+                        muscle_group_stats[muscle_group]['total_reps'] += log.reps_count or 0
+                except WorkoutExercise.DoesNotExist:
+                    pass
+            
+            # 如果 action_name 匹配且没有通过exercise_id找到，也统计
+            if log.action_name and not muscle_groups_found:
+                matching_exercises = all_exercises.filter(name=log.action_name)
+                for exercise in matching_exercises:
+                    if exercise.muscle_group and exercise.muscle_group not in muscle_groups_found:
+                        muscle_group = exercise.muscle_group
+                        muscle_groups_found.add(muscle_group)
+                        muscle_group_stats[muscle_group]['days'].add(log.start_time.date())
+                        muscle_group_stats[muscle_group]['count'] += 1
+                        muscle_group_stats[muscle_group]['total_reps'] += log.reps_count or 0
+        
+        # 将肌肉组数据映射到3D模型肌肉ID
+        muscle_fatigue = {}
+        
+        for muscle_group, muscle_ids in MUSCLE_GROUP_MAPPING.items():
+            stats = muscle_group_stats[muscle_group]
+            days_count = len(stats['days'])
+            workout_count = stats['count']
+            total_reps = stats['total_reps']
+            
+            # 计算疲劳程度 (0-1之间)
+            # 基于天数和次数，使用对数函数使其渐进增长
+            import math
+            # 天数因子：每7天增加0.1，最大1.0
+            days_factor = min(days_count / 70.0, 1.0)  # 70天达到最大
+            # 次数因子：每100次增加0.1，最大1.0
+            count_factor = min(workout_count / 1000.0, 1.0)  # 1000次达到最大
+            # 总次数因子：每1000次增加0.1，最大1.0
+            reps_factor = min(total_reps / 10000.0, 1.0)  # 10000次达到最大
+            
+            # 综合疲劳程度：取三个因子的加权平均
+            fatigue_level = (days_factor * 0.4 + count_factor * 0.3 + reps_factor * 0.3)
+            
+            # 为每个肌肉ID分配相同的疲劳数据
+            for muscle_id in muscle_ids:
+                muscle_fatigue[muscle_id] = {
+                    'days': days_count,
+                    'workout_count': workout_count,
+                    'total_reps': total_reps,
+                    'fatigue_level': fatigue_level
+                }
+        
+        # 确保所有肌肉都有数据（即使为0）
+        all_muscle_ids = [
+            "chest", "abs_upper", "abs_lower",
+            "deltoid_l", "deltoid_r",
+            "bicep_l", "bicep_r", "tricep_l", "tricep_r",
+            "forearm_l", "forearm_r",
+            "quad_l", "quad_r", "calf_l", "calf_r",
+            "traps", "lats", "head"
+        ]
+        
+        for muscle_id in all_muscle_ids:
+            if muscle_id not in muscle_fatigue:
+                muscle_fatigue[muscle_id] = {
+                    'days': 0,
+                    'workout_count': 0,
+                    'total_reps': 0,
+                    'fatigue_level': 0.0
+                }
+        
+        return Response({
+            'success': True,
+            'muscle_fatigue': muscle_fatigue
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'error': str(e),
+            'muscle_fatigue': {}
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
