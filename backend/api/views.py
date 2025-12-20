@@ -1,14 +1,21 @@
 import re
 import requests
+import os
+import tempfile
+import uuid
+from django.conf import settings
 from bs4 import BeautifulSoup
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 import json
 import cv2
 import mediapipe as mp
 import numpy as np
 import base64
+from .utils.video_analyzer import VideoAnalyzer
+from .utils.coach_agent import CoachAgent
 from .utils.action_classifier import detect_action, ACTION_CATEGORIES
 from .models import WorkoutPlan, WorkoutLog
 
@@ -147,6 +154,162 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             print(f"Error in destroy: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def analyze_video_content(request):
+    """
+    分析上传的视频，提取健身动作
+    """
+    try:
+        video_file = request.FILES.get('video')
+        if not video_file:
+            return Response({
+                'success': False,
+                'error': '请上传视频文件'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 确保媒体目录存在
+        gif_dir = os.path.join(settings.MEDIA_ROOT, 'workout_gifs')
+        if not os.path.exists(gif_dir):
+            os.makedirs(gif_dir)
+
+        # 保存临时文件
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+            for chunk in video_file.chunks():
+                temp_video.write(chunk)
+            temp_video_path = temp_video.name
+
+        try:
+            analyzer = VideoAnalyzer()
+            workout_data = analyzer.analyze_video(temp_video_path)
+            
+            if workout_data:
+                # 为每个动作生成 GIF
+                exercises = workout_data.get('exercises', [])
+                for exercise in exercises:
+                    start_time = exercise.get('start_time', '00:00')
+                    end_time = exercise.get('end_time', '00:05')
+                    
+                    # 生成唯一的 GIF 文件名
+                    gif_filename = f"ex_{uuid.uuid4().hex[:8]}.gif"
+                    gif_path = os.path.join(gif_dir, gif_filename)
+                    
+                    if analyzer.create_gif(temp_video_path, start_time, end_time, gif_path):
+                        # 记录 GIF 的相对 URL
+                        exercise['gif_url'] = request.build_absolute_uri(settings.MEDIA_URL + 'workout_gifs/' + gif_filename)
+                
+                return Response({
+                    'success': True,
+                    'data': workout_data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'success': False,
+                    'error': '视频分析失败，请稍后重试'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if os.path.exists(temp_video_path):
+                import time
+                time.sleep(0.2) # 给 Windows 一点时间释放句柄
+                try:
+                    os.remove(temp_video_path)
+                except Exception as e:
+                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # 打印详细堆栈到终端
+        return Response({
+            'success': False,
+            'error': f'服务器内部错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def evaluate_complete_training(request):
+    """
+    评价完整的训练视频，给出AI综合反馈
+    请求参数：
+    - video: 训练视频文件
+    - workout_plan: 训练计划信息（JSON字符串，包含所有动作信息）
+    - plan_id: 训练计划ID（可选，用于关联）
+    - log_id: 训练记录ID（可选，如果提供则更新该记录）
+    """
+    try:
+        video_file = request.FILES.get('video')
+        workout_plan_str = request.data.get('workout_plan', '[]')
+        plan_id = request.data.get('plan_id')
+        log_id = request.data.get('log_id')
+
+        if not video_file:
+            return Response({
+                'success': False,
+                'error': '请提供视频文件'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 保存临时视频文件
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+            for chunk in video_file.chunks():
+                temp_video.write(chunk)
+            temp_video_path = temp_video.name
+
+        # 解析训练计划
+        try:
+            workout_plan = json.loads(workout_plan_str) if workout_plan_str else []
+        except json.JSONDecodeError:
+            return Response({
+                'success': False,
+                'error': '训练计划数据格式错误'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # 调用CoachAgent进行综合评价
+            coach = CoachAgent()
+            feedback_data = coach.analyze_complete_training(
+                temp_video_path,
+                workout_plan
+            )
+
+            # 添加计划相关信息
+            feedback_data['plan_id'] = plan_id
+            feedback_data['log_id'] = log_id
+
+            # 保存 AI 评价到 WorkoutLog
+            if log_id:
+                try:
+                    workout_log = WorkoutLog.objects.get(id=log_id)
+                    workout_log.ai_score = feedback_data.get('score', 0)
+                    workout_log.ai_feedback = feedback_data.get('improvement_advice', '') + "\n\n" + feedback_data.get('coach_comment', '')
+                    workout_log.save(update_fields=['ai_score', 'ai_feedback'])
+                    feedback_data['log_id'] = workout_log.id
+                except WorkoutLog.DoesNotExist:
+                    pass
+
+            return Response({
+                'success': True,
+                'data': feedback_data
+            }, status=status.HTTP_200_OK)
+
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_video_path):
+                import time
+                time.sleep(0.2)  # 给Windows一点时间释放句柄
+                try:
+                    os.remove(temp_video_path)
+                except Exception as e:
+                    print(f"Warning: Could not remove temp video {temp_video_path}: {e}")
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({
+            'success': False,
+            'error': f'服务器内部错误: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @api_view(['POST'])
 def analyze_douyin(request):

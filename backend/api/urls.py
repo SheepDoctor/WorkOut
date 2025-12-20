@@ -10,4 +10,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('analyze-douyin/', views.analyze_douyin, name='analyze_douyin'),
     path('analyze-pose/', views.analyze_pose, name='analyze_pose'),
+    path('analyze-video/', views.analyze_video_content, name='analyze_video'),
+    path('evaluate-complete-training/', views.evaluate_complete_training, name='evaluate_complete_training'),
 ]

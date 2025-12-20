@@ -137,7 +137,11 @@
               </div>
               <h3 class="text-xl font-bold text-white mb-2">暂无训练计划</h3>
               <p class="text-sm text-slate-500 mb-8 max-w-[240px]">您还没有创建训练计划，可以上传视频进行 AI 分析，或从历史记录中加载。</p>
-              <p class="text-sm text-slate-400">请从历史记录中选择一个训练计划开始</p>
+              <label class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-500/25 cursor-pointer">
+                  <i class="fa-solid fa-upload mr-2"></i>
+                  上传视频开始
+                  <input type="file" accept="video/*" class="hidden" @change="handleVideoUpload" />
+              </label>
           </div>
 
           <transition :name="transitionName">
@@ -384,6 +388,10 @@
           </button>
           
           <div class="flex-1 flex justify-center gap-4">
+              <label class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer" title="上传视频分析">
+                  <i class="fa-solid fa-video"></i>
+                  <input type="file" accept="video/*" class="hidden" @change="handleVideoUpload" />
+              </label>
               <router-link to="/analyzer" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="抖音分析">
                   <i class="fa-brands fa-tiktok"></i>
               </router-link>
@@ -618,6 +626,8 @@ export default {
     const videoElement = ref(null);
     const canvasElement = ref(null);
     let poseAnalyzerInstance = null;
+    let mediaRecorder = null;
+    const recordedChunks = ref([]);
 
 
     // 动作类型映射 - 返回动作类别（category）
@@ -670,10 +680,8 @@ export default {
     };
 
     const startCamera = async () => {
-      console.log('[Camera] ========== 开始打开相机 ==========');
       try {
         error.value = null;
-        console.log('[Camera] 请求摄像头权限...');
         const s = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 640 },
@@ -681,8 +689,6 @@ export default {
             facingMode: 'user'
           }
         });
-        console.log('[Camera] ✓ 摄像头权限获取成功');
-        console.log('[Camera] Stream tracks:', s.getTracks().map(t => ({ kind: t.kind, label: t.label, enabled: t.enabled })));
         
         stream.value = s;
         cameraActive.value = true;
@@ -691,40 +697,70 @@ export default {
         
         // 初始化 MediaPipe PoseAnalyzer
         if (!poseAnalyzerInstance) {
-          console.log('[Camera] 初始化 MediaPipe PoseAnalyzer...');
           poseAnalyzerInstance = new PoseAnalyzer();
           await poseAnalyzerInstance.initialize();
-          console.log('[Camera] ✓ MediaPipe 初始化完成');
         }
 
         // 设置动作类别
         const category = getExerciseCategory(currentExercise.value);
-        console.log('[Camera] 设置动作类别:', category);
         poseAnalyzerInstance.setExerciseCategory(category);
         poseAnalyzerInstance.resetCounter();
+        
+        // 打印计数标准信息
+        const categoryMap = {
+          'elbow_dominant': '肘关节（手臂）',
+          'shoulder_dominant': '肩关节（肩膀）',
+          'knee_dominant': '膝关节（膝盖）',
+          'hip_dominant': '髋关节（臀部）',
+          'core_dominant': '核心（核心/腹部）'
+        };
+        const categoryName = categoryMap[category] || category || '未知';
+        console.log('========================================');
+        console.log('🎯 AI辅助训练 - 计数标准信息');
+        console.log('========================================');
+        console.log('动作名称:', currentExercise.value.name || '未知');
+        console.log('训练部位:', currentExercise.value.muscle_group || '未知');
+        console.log('计数标准:', categoryName);
+        console.log('动作类别:', category || '未知');
+        console.log('目标次数:', currentExercise.value.reps_per_set || 12, '次/组');
+        console.log('目标组数:', currentExercise.value.total_sets || 5, '组');
+        console.log('========================================');
         
         // 记录开始时间和重置时长
         startTime.value = new Date();
         duration.value = 0;
-        console.log('[Camera] 训练开始时间:', startTime.value.toISOString());
 
         // 创建训练日志
-        console.log('[Camera] 创建训练日志...');
         await createWorkoutLog();
-        console.log('[Camera] ✓ 训练日志创建完成，logId:', currentLogId.value);
         
         // 这里的 videoElement 引用会在模板渲染后可用
         setTimeout(() => {
           if (videoElement.value) {
-            console.log('[Camera] 设置视频元素 srcObject...');
             videoElement.value.srcObject = s;
-            console.log('[Camera] ✓ 视频元素已设置，开始分析循环');
+            
+            // 开始录制视频
+            try {
+              recordedChunks.value = [];
+              mediaRecorder = new MediaRecorder(s, {
+                mimeType: 'video/webm;codecs=vp8,opus'
+              });
+              
+              mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                  recordedChunks.value.push(event.data);
+                }
+              };
+              
+              mediaRecorder.start(100); // 每100ms收集一次数据
+              console.log('[VideoRecord] 开始录制视频');
+            } catch (err) {
+              console.warn('[VideoRecord] 录制失败:', err);
+              // 录制失败不影响训练，继续执行
+            }
+            
             analyzeLoop();
-          } else {
-            console.error('[Camera] ✗ videoElement 未找到！');
           }
         }, 100);
-        console.log('[Camera] ========== 相机打开流程完成 ==========');
       } catch (err) {
         error.value = '无法访问摄像头，请检查权限设置';
         console.error('[Camera] ✗ 摄像头错误:', err);
@@ -738,36 +774,63 @@ export default {
 
 
     const stopCamera = async (status = 'interrupted') => {
-      console.log('[StopCamera] ========== 停止相机 ==========');
       // 如果 status 是事件对象（点击关闭按钮时），则默认为 'interrupted'
       const finalStatus = typeof status === 'string' ? status : 'interrupted';
-      console.log('[StopCamera] 停止状态:', finalStatus);
+      
+      // 停止录制视频
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        console.log('[VideoRecord] 停止录制视频');
+      }
       
       if (stream.value) {
-        console.log('[StopCamera] 停止所有视频轨道...');
         const tracks = stream.value.getTracks();
-        console.log('[StopCamera] 找到', tracks.length, '个轨道');
-        tracks.forEach((track, index) => {
-          console.log('[StopCamera] 停止轨道', index, '-', track.kind, track.label);
+        tracks.forEach((track) => {
           track.stop();
         });
         stream.value = null;
-        console.log('[StopCamera] ✓ 所有轨道已停止');
       }
       
       cameraActive.value = false;
       annotatedImage.value = null;
       feedback.value = [];
-      console.log('[StopCamera] 相机状态已重置');
 
       // 结束日志记录
+      let logId = null;
       if (startTime.value) {
         duration.value = Math.round((new Date() - startTime.value) / 1000);
-        console.log('[StopCamera] 训练时长:', duration.value, '秒');
-        console.log('[StopCamera] 更新训练日志...');
-        await updateWorkoutLog(finalStatus);
+        logId = await updateWorkoutLog(finalStatus);
         startTime.value = null;
-        console.log('[StopCamera] ✓ 训练日志已更新');
+      }
+
+      // 如果训练完成，发送视频到后端进行AI分析
+      if (finalStatus === 'completed' && recordedChunks.value.length > 0 && mediaRecorder) {
+        try {
+          // 确保录制已停止并等待数据可用
+          if (mediaRecorder.state === 'recording') {
+            await new Promise((resolve) => {
+              mediaRecorder.onstop = resolve;
+              mediaRecorder.stop();
+            });
+          }
+          
+          // 等待一小段时间确保所有数据都已收集
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // 创建Blob并发送
+          if (recordedChunks.value.length > 0) {
+            const blob = new Blob(recordedChunks.value, { type: 'video/webm' });
+            await sendVideoForAnalysis(blob, logId);
+          }
+        } catch (err) {
+          console.error('[VideoRecord] 发送视频分析失败:', err);
+        } finally {
+          recordedChunks.value = [];
+          mediaRecorder = null;
+        }
+      } else {
+        recordedChunks.value = [];
+        mediaRecorder = null;
       }
 
       // 清理 MediaPipe（不关闭，保持实例以便重用）
@@ -775,12 +838,9 @@ export default {
         poseAnalyzerInstance.setExerciseCategory(null);
         poseAnalyzerInstance.resetCounter();
       }
-      
-      console.log('[StopCamera] ========== 相机停止完成 ==========');
     };
 
     const createWorkoutLog = async () => {
-      console.log('[CreateWorkoutLog] ========== 创建训练日志 ==========');
       try {
         const plan = history.value.find(p => p.id === currentWorkoutId.value);
         const logData = {
@@ -793,11 +853,9 @@ export default {
           target_reps: currentExercise.value.reps_per_set || 12,
           target_sets: currentExercise.value.total_sets
         };
-        console.log('[CreateWorkoutLog] 日志数据:', logData);
         
         const response = await axios.post('/api/logs/', logData);
         currentLogId.value = response.data.id;
-        console.log('[CreateWorkoutLog] ✓ 训练记录已创建，ID:', currentLogId.value);
       } catch (e) {
         console.error('[CreateWorkoutLog] ✗ 创建训练日志失败', e);
         console.error('[CreateWorkoutLog] 错误详情:', {
@@ -809,13 +867,12 @@ export default {
     };
 
     const updateWorkoutLog = async (finalStatus) => {
-      console.log('[UpdateWorkoutLog] ========== 更新训练日志 ==========');
       if (!currentLogId.value) {
-        console.log('[UpdateWorkoutLog] ⚠ 没有日志ID，跳过更新');
-        return;
+        return null;
       }
       
       try {
+        const logId = currentLogId.value;
         const updateData = {
           reps_count: reps.value,
           duration: duration.value,
@@ -824,14 +881,11 @@ export default {
           target_reps: currentExercise.value.reps_per_set || 12,
           target_sets: currentExercise.value.total_sets
         };
-        console.log('[UpdateWorkoutLog] 更新数据:', updateData);
-        console.log('[UpdateWorkoutLog] 日志ID:', currentLogId.value);
         
-        await axios.patch(`/api/logs/${currentLogId.value}/`, updateData);
-        console.log('[UpdateWorkoutLog] ✓ 训练记录已更新，状态:', finalStatus);
+        await axios.patch(`/api/logs/${logId}/`, updateData);
         currentLogId.value = null;
         await fetchExerciseHistory(); // 重新加载，确保最新的完成记录可见
-        console.log('[UpdateWorkoutLog] ✓ 训练历史已刷新');
+        return logId;
       } catch (e) {
         console.error('[UpdateWorkoutLog] ✗ 更新训练日志失败', e);
         console.error('[UpdateWorkoutLog] 错误详情:', {
@@ -839,44 +893,95 @@ export default {
           response: e.response?.data,
           status: e.response?.status
         });
+        return null;
+      }
+    };
+
+    const sendVideoForAnalysis = async (videoBlob, logId) => {
+      try {
+        console.log('[VideoAnalysis] 开始发送视频到后端进行AI分析...');
+        
+        // 准备训练计划数据
+        const workoutPlan = exercises.value.map(ex => ({
+          id: ex.id,
+          name: ex.name,
+          tips: ex.tips || '',
+          total_sets: ex.total_sets || 5,
+          reps_per_set: ex.reps_per_set || 12
+        }));
+        
+        const formData = new FormData();
+        formData.append('video', videoBlob, 'training.webm');
+        formData.append('workout_plan', JSON.stringify(workoutPlan));
+        if (currentWorkoutId.value) {
+          formData.append('plan_id', currentWorkoutId.value);
+        }
+        if (logId) {
+          formData.append('log_id', logId);
+        }
+        
+        // 显示分析进度
+        uploadingEvaluation.value = true;
+        evaluationProgress.value = 0;
+        evaluationResult.value = null;
+        
+        // 模拟进度更新
+        const progressInterval = setInterval(() => {
+          if (evaluationProgress.value < 90) {
+            evaluationProgress.value += 10;
+          }
+        }, 500);
+        
+        const response = await axios.post('/api/evaluate-complete-training/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        clearInterval(progressInterval);
+        evaluationProgress.value = 100;
+        
+        if (response.data.success) {
+          evaluationResult.value = response.data.data;
+          console.log('[VideoAnalysis] ✓ AI分析完成', evaluationResult.value);
+          
+          // 刷新训练历史以显示最新的AI评分
+          await fetchExerciseHistory();
+        } else {
+          console.error('[VideoAnalysis] ✗ 分析失败:', response.data.error);
+        }
+      } catch (err) {
+        console.error('[VideoAnalysis] ✗ 发送视频分析失败:', err);
+        uploadingEvaluation.value = false;
+        evaluationProgress.value = 0;
+      } finally {
+        setTimeout(() => {
+          uploadingEvaluation.value = false;
+        }, 1000);
       }
     };
 
     const analyzeLoop = async () => {
       if (!cameraActive.value || showSummary.value) {
-        if (!cameraActive.value) {
-          console.log('[AnalyzeLoop] 相机未激活，停止循环');
-        }
-        if (showSummary.value) {
-          console.log('[AnalyzeLoop] 显示总结弹窗，停止循环');
-        }
         return;
       }
       if (!analyzing.value) {
         await captureAndAnalyze();
-      } else {
-        console.log('[AnalyzeLoop] 正在分析中，跳过本次循环');
       }
       requestAnimationFrame(analyzeLoop);
     };
 
     const captureAndAnalyze = async () => {
       if (!cameraActive.value || !videoElement.value || !poseAnalyzerInstance) {
-        console.log('[CaptureAndAnalyze] 跳过分析 - cameraActive:', cameraActive.value, 'videoElement:', !!videoElement.value, 'poseAnalyzer:', !!poseAnalyzerInstance);
         return;
       }
       
-      const startTime = performance.now();
       analyzing.value = true;
-      console.log('[CaptureAndAnalyze] ========== 开始捕获和分析 ==========');
       
       try {
         const video = videoElement.value;
         
-        console.log('[CaptureAndAnalyze] 视频状态 - readyState:', video.readyState, 'videoWidth:', video.videoWidth, 'videoHeight:', video.videoHeight);
-        
         if (video.readyState !== 4) {
-          console.log('[CaptureAndAnalyze] 视频未就绪 (readyState != 4)，跳过本次分析');
           analyzing.value = false;
           return;
         }
@@ -894,22 +999,7 @@ export default {
           canvas.height = video.videoHeight || 480;
         }
         
-        console.log('[CaptureAndAnalyze] Canvas 尺寸:', canvasElement.value.width, 'x', canvasElement.value.height);
-
-        console.log('[CaptureAndAnalyze] 使用前端 MediaPipe 分析...');
-        
-        const requestStartTime = performance.now();
         const result = await poseAnalyzerInstance.analyzeFrame(video, canvas);
-        const requestDuration = performance.now() - requestStartTime;
-        
-        console.log('[CaptureAndAnalyze] ✓ MediaPipe 分析完成，耗时:', requestDuration.toFixed(2), 'ms');
-        console.log('[CaptureAndAnalyze] 分析结果:', {
-          pose_state: result.poseState,
-          pose_angle: result.poseAngle,
-          landmarks_detected: result.landmarksDetected,
-          action_count: result.actionCount,
-          feedback_count: result.feedback?.length || 0
-        });
 
         feedback.value = result.feedback || [];
         annotatedImage.value = result.annotatedImage;
@@ -917,17 +1007,10 @@ export default {
         // 更新次数计数（从 MediaPipe 的计数器获取）
         const newReps = result.actionCount || 0;
         if (newReps !== reps.value) {
-          console.log('[CaptureAndAnalyze] 次数更新:', reps.value, '->', newReps);
           reps.value = newReps;
         }
         
-        console.log('[CaptureAndAnalyze] 姿态状态:', result.poseState, '角度:', result.poseAngle);
-        console.log('[CaptureAndAnalyze] 反馈数量:', feedback.value.length);
-        
         updateWorkoutState(result.poseState);
-        
-        const totalDuration = performance.now() - startTime;
-        console.log('[CaptureAndAnalyze] ========== 分析完成，总耗时:', totalDuration.toFixed(2), 'ms ==========');
       } catch (err) {
         console.error('[CaptureAndAnalyze] ✗ 分析错误:', err);
         console.error('[CaptureAndAnalyze] 错误详情:', {
@@ -945,8 +1028,6 @@ export default {
       // 检查是否达到目标次数（次数由 MediaPipe 的 ActionCounter 自动计数）
       const targetReps = currentExercise.value.reps_per_set || 12;
       if (reps.value >= targetReps && reps.value > 0) {
-        console.log('[UpdateWorkoutState] ✓ 达到目标次数！准备完成训练');
-        console.log('[UpdateWorkoutState] 停止相机并标记为完成...');
         stopCamera('completed'); // 完成一组，停止视频监督
         incrementProgress();
         reps.value = 0;
@@ -954,7 +1035,6 @@ export default {
           poseAnalyzerInstance.resetCounter();
         }
         feedback.value = [{ type: 'success', message: `恭喜！完成一组。已为您停止视频并同步记录。` }];
-        console.log('[UpdateWorkoutState] ========== 训练完成 ==========');
       }
     };
 
@@ -986,9 +1066,7 @@ export default {
     };
 
     const fetchExerciseHistory = async () => {
-      console.log('[FetchExerciseHistory] ========== 获取训练历史 ==========');
       if (!currentExercise.value) {
-        console.log('[FetchExerciseHistory] ⚠ 当前动作不存在，清空历史');
         exerciseHistory.value = [];
         return;
       }
@@ -996,15 +1074,10 @@ export default {
       try {
         const plan = history.value.find(p => p.id === currentWorkoutId.value);
         const planTitle = plan ? plan.title : null;
-        console.log('[FetchExerciseHistory] 当前动作:', currentExercise.value.name, 'ID:', currentExercise.value.id);
-        console.log('[FetchExerciseHistory] 计划标题:', planTitle);
 
-        console.log('[FetchExerciseHistory] 发送请求到 /api/logs/...');
         const response = await axios.get('/api/logs/');
-        console.log('[FetchExerciseHistory] ✓ 响应接收成功');
         
         const allLogs = Array.isArray(response.data) ? response.data : [];
-        console.log('[FetchExerciseHistory] 总日志数:', allLogs.length);
         
         // 过滤逻辑：属于当前动作的记录 OR (属于当前计划的整体评价)
         const filteredLogs = allLogs.filter(log => {
@@ -1015,9 +1088,7 @@ export default {
           return isCurrentExercise || isOverallEvaluation;
         });
         
-        console.log('[FetchExerciseHistory] 过滤后日志数:', filteredLogs.length);
         exerciseHistory.value = filteredLogs.slice(0, 10);
-        console.log('[FetchExerciseHistory] ✓ 训练历史已更新，显示数量:', exerciseHistory.value.length);
       } catch (e) {
         console.error('[FetchExerciseHistory] ✗ 获取训练历史失败', e);
         console.error('[FetchExerciseHistory] 错误详情:', {
@@ -1165,7 +1236,6 @@ export default {
         await axios.patch(`/api/plans/${currentWorkoutId.value}/`, {
           exercises: exercises.value
         });
-        console.log(`已同步 ${exercise.name} 进度到数据库`);
       } catch (e) {
         console.error("同步数据库失败", e);
       } finally {
@@ -1174,10 +1244,57 @@ export default {
     };
 
     const handleVideoUpload = async (event) => {
-      // 视频上传功能已移除，计数改为前端实时处理
-      alert('视频上传功能已移除，请使用实时摄像头进行训练');
-      if (event && event.target) {
-        event.target.value = '';
+      const file = event && event.target ? event.target.files[0] : null;
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('video', file);
+
+      loading.value = true;
+      loadingSteps.value = ['上传视频文件', 'AI 动作分析', '生成演示片段', '同步训练计划'];
+      currentLoadingStep.value = 0;
+
+      try {
+        const response = await axios.post('/api/analyze-video/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            if (percentCompleted >= 100) {
+              currentLoadingStep.value = 1;
+            }
+          }
+        });
+
+        // 由于后端分析和GIF生成是在同一个接口，我们在这里直接跳到完成
+        currentLoadingStep.value = 2;
+
+        if (response.data.success) {
+          currentLoadingStep.value = 3;
+          const result = response.data.data;
+          exercises.value = result.exercises || [];
+          currentIndex.value = 0;
+          showSummary.value = false;
+          
+          // 自动保存到历史，使用 AI 生成的标题
+          const aiTitle = result.title || `AI分析 - ${new Date().toLocaleDateString()}`;
+          await saveCurrentWorkout(aiTitle);
+          
+          // 留出时间让用户看清"同步完成"
+          await new Promise(resolve => setTimeout(resolve, 800));
+        } else {
+          alert('分析失败: ' + (response.data.error || '未知错误'));
+        }
+      } catch (err) {
+        console.error('上传失败:', err);
+        alert('分析失败，请检查后端服务');
+      } finally {
+        loading.value = false;
+        // 清空 input 方便下次上传同一文件
+        if (event && event.target) {
+          event.target.value = '';
+        }
       }
     };
 

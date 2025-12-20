@@ -590,7 +590,6 @@ export class PoseAnalyzer {
     const locateFile = (file) => new URL(file, assetsBaseUrl).href;
 
     try {
-      console.log('Initializing MediaPipe from local @mediapipe/pose package...');
       this.pose = new Pose({
         locateFile
       });
@@ -607,7 +606,6 @@ export class PoseAnalyzer {
       });
 
       this.isInitialized = true;
-      console.log('MediaPipe Pose initialized successfully from local package');
       return;
     } catch (error) {
       console.error('Failed to initialize MediaPipe locally:', error);
