@@ -12,4 +12,6 @@ urlpatterns = [
     path('analyze-pose/', views.analyze_pose, name='analyze_pose'),
     path('analyze-video/', views.analyze_video_content, name='analyze_video'),
     path('evaluate-training/', views.evaluate_training_video, name='evaluate_training_video'),
+    path('evaluate-training-video/', views.evaluate_complete_training, name='evaluate_complete_training'),
+    path('save-training-video/', views.save_training_video, name='save_training_video'),
 ]

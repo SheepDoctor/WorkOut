@@ -85,7 +85,7 @@ export default {
       this.result = null
 
       try {
-        const response = await axios.post('http://localhost:8000/api/analyze-douyin/', {
+        const response = await axios.post('/api/analyze-douyin/', {
           url: this.douyinUrl
         })
 

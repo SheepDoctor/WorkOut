@@ -1,0 +1,117 @@
+{
+    "elbow_dominant": {
+        "name": "Elbow Dominant",
+        "description": "Exercises primarily involving elbow flexion/extension",
+        "examples": ["bicep curl", "tricep extension", "hammer curl", "concentration curl"],
+        "detection_type": "angle",
+        "landmarks": {
+            "point1": "LEFT_SHOULDER",
+            "point2": "LEFT_ELBOW",
+            "point3": "LEFT_WRIST"
+        },
+        "thresholds": {
+            "start_condition": {
+                "operator": "<",
+                "value": 60
+            },
+            "end_condition": {
+                "operator": ">",
+                "value": 140
+            }
+        },
+        "classification_rule": "The exercise primarily involves bending and straightening the elbow joint. The main movement is at the elbow, with the shoulder and wrist serving as anchor points.",
+        "muscle_group": "手臂（二头肌/三头肌）"
+    },
+    "shoulder_dominant": {
+        "name": "Shoulder Dominant",
+        "description": "Exercises primarily involving shoulder movement",
+        "examples": ["shoulder press", "lateral raise", "front raise", "overhead press"],
+        "detection_type": "height",
+        "landmarks": {
+            "point1": "LEFT_SHOULDER",
+            "point2": "LEFT_WRIST"
+        },
+        "thresholds": {
+            "start_condition": {
+                "operator": "<",
+                "value": -0.2
+            },
+            "end_condition": {
+                "operator": ">",
+                "value": 0.02
+            }
+        },
+        "classification_rule": "The exercise primarily involves raising or lowering the arms at the shoulder joint. The main movement is vertical displacement of the arms relative to the shoulders.",
+        "muscle_group": "肩部"
+    },
+    "knee_dominant": {
+        "name": "Knee Dominant",
+        "description": "Exercises primarily involving knee flexion/extension",
+        "examples": ["squat", "lunge", "leg press", "step up"],
+        "detection_type": "angle",
+        "landmarks": {
+            "point1": "LEFT_HIP",
+            "point2": "LEFT_KNEE",
+            "point3": "LEFT_ANKLE"
+        },
+        "thresholds": {
+            "start_condition": {
+                "operator": "<",
+                "value": 90
+            },
+            "end_condition": {
+                "operator": ">",
+                "value": 160
+            }
+        },
+        "classification_rule": "The exercise primarily involves bending and straightening the knees. The main movement is at the knee joint, with the hip and ankle serving as reference points.",
+        "muscle_group": "腿部（股四头肌/腘绳肌）"
+    },
+    "hip_dominant": {
+        "name": "Hip Dominant",
+        "description": "Exercises primarily involving hip hinge movement",
+        "examples": ["deadlift", "hip thrust", "romanian deadlift", "good morning"],
+        "detection_type": "angle",
+        "landmarks": {
+            "point1": "LEFT_SHOULDER",
+            "point2": "LEFT_HIP",
+            "point3": "LEFT_KNEE"
+        },
+        "thresholds": {
+            "start_condition": {
+                "operator": "<",
+                "value": 120
+            },
+            "end_condition": {
+                "operator": ">",
+                "value": 170
+            }
+        },
+        "classification_rule": "The exercise primarily involves hip flexion and extension. The main movement is hinging at the hip joint, with the torso and legs moving relative to each other.",
+        "muscle_group": "臀部/后链"
+    },
+    "core_dominant": {
+        "name": "Core Dominant",
+        "description": "Exercises primarily involving core/trunk movement",
+        "examples": ["sit-up", "crunch", "plank", "russian twist"],
+        "detection_type": "angle",
+        "landmarks": {
+            "point1": "LEFT_SHOULDER",
+            "point2": "LEFT_HIP",
+            "point3": "LEFT_KNEE"
+        },
+        "thresholds": {
+            "start_condition": {
+                "operator": "<",
+                "value": 100
+            },
+            "end_condition": {
+                "operator": ">",
+                "value": 160
+            }
+        },
+        "classification_rule": "The exercise primarily involves flexion or rotation of the trunk/core. The main movement is in the abdominal region, with the spine flexing or rotating.",
+        "muscle_group": "核心/腹部"
+    }
+}
+

@@ -25,6 +25,9 @@ class WorkoutExercise(models.Model):
     start_time = models.CharField(max_length=10, default="00:00", verbose_name="开始时间")
     end_time = models.CharField(max_length=10, default="00:00", verbose_name="结束时间")
     seconds = models.IntegerField(default=0, verbose_name="开始秒数")
+    gif_url = models.URLField(max_length=500, null=True, blank=True, verbose_name="动作演示GIF")
+    category = models.CharField(max_length=50, null=True, blank=True, verbose_name="动作类别")
+    muscle_group = models.CharField(max_length=50, null=True, blank=True, verbose_name="训练部位")
     order = models.IntegerField(default=0, verbose_name="排序")
 
     class Meta:
