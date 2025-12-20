@@ -116,6 +116,27 @@ def analyze_douyin(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# 初始化 MediaPipe 模块
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
+
+# 使用线程局部存储，确保多线程环境下的安全性
+import threading
+thread_local = threading.local()
+
+def get_pose_detector():
+    """获取当前线程的 Pose 检测器实例"""
+    if not hasattr(thread_local, 'pose_detector'):
+        # model_complexity: 0=Lite, 1=Full, 2=Heavy. 
+        # 实时应用建议使用 0 或 1。此处改为 1 平衡速度与精度。
+        thread_local.pose_detector = mp_pose.Pose(
+            static_image_mode=True,
+            model_complexity=1,
+            enable_segmentation=False,
+            min_detection_confidence=0.3 # 降低置信度阈值，提高检出率
+        )
+    return thread_local.pose_detector
+
 @api_view(['POST'])
 def analyze_pose(request):
     """
@@ -123,6 +144,7 @@ def analyze_pose(request):
     """
     try:
         image_data = request.data.get('image', '')
+        exercise_type = request.data.get('exercise_type', 'general') # 获取动作类型
         
         if not image_data:
             return Response({
@@ -152,35 +174,29 @@ def analyze_pose(request):
                 'error': f'图像解码失败: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # 使用MediaPipe进行姿态检测
-        mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
+        # 获取当前线程的 Pose 检测器
+        pose_detector = get_pose_detector()
         
-        with mp_pose.Pose(
-            static_image_mode=True,
-            model_complexity=2,
-            enable_segmentation=False,
-            min_detection_confidence=0.5
-        ) as pose:
-            # 转换BGR到RGB
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            results = pose.process(image_rgb)
-            
-            # 检测是否检测到人体
-            if not results.pose_landmarks:
-                return Response({
-                    'success': False,
-                    'error': '未检测到人体姿态，请确保摄像头中有人'
-                }, status=status.HTTP_200_OK)
+        # 转换BGR到RGB
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        results = pose_detector.process(image_rgb)
+        
+        # 准备返回数据
+        feedback = []
+        pose_state = "UNKNOWN"
+        pose_angle = 0
+        landmarks_detected = False
+        
+        annotated_image = image.copy()
+
+        # 检测是否检测到人体
+        if results.pose_landmarks:
+            landmarks_detected = True
             
             # 提取关键点
             landmarks = results.pose_landmarks.landmark
             
-            # 计算关键角度和位置
-            feedback = analyze_pose_quality(landmarks, image.shape)
-            
             # 绘制姿态
-            annotated_image = image.copy()
             mp_drawing.draw_landmarks(
                 annotated_image,
                 results.pose_landmarks,
@@ -188,19 +204,55 @@ def analyze_pose(request):
                 mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
                 mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2)
             )
+
+            # 根据动作类型进行分析
+            if exercise_type == 'squat':
+                state, angle, msg = detect_squat(landmarks)
+                if state:
+                    pose_state = state
+                    pose_angle = angle
+                    feedback.append({'type': 'info', 'message': msg})
+                else:
+                    feedback.append({'type': 'warning', 'message': msg})
+                    
+            elif exercise_type == 'curl':
+                state, angle, msg = detect_curl(landmarks)
+                if state:
+                    pose_state = state
+                    pose_angle = angle
+                    feedback.append({'type': 'info', 'message': msg})
+                else:
+                    feedback.append({'type': 'warning', 'message': msg})
+                    
+            elif exercise_type == 'press':
+                state, angle, msg = detect_press(landmarks)
+                if state:
+                    pose_state = state
+                    pose_angle = angle
+                    feedback.append({'type': 'info', 'message': msg})
+                else:
+                    feedback.append({'type': 'warning', 'message': msg})
             
-            # 将标注后的图像编码为base64
-            _, buffer = cv2.imencode('.jpg', annotated_image)
-            annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
-            
-            return Response({
-                'success': True,
-                'data': {
-                    'feedback': feedback,
-                    'annotated_image': f'data:image/jpeg;base64,{annotated_image_base64}',
-                    'landmarks_detected': True,
-                }
-            }, status=status.HTTP_200_OK)
+            else: # general
+                feedback = analyze_pose_quality(landmarks, image.shape)
+        else:
+            feedback.append({'type': 'warning', 'message': '未检测到人体，请调整站位'})
+
+        # 无论是否检测到，都返回图像，确保前端画面流畅
+        _, buffer = cv2.imencode('.jpg', annotated_image)
+        annotated_image_base64 = base64.b64encode(buffer).decode('utf-8')
+        
+        return Response({
+            'success': True,
+            'data': {
+                'feedback': feedback,
+                'annotated_image': f'data:image/jpeg;base64,{annotated_image_base64}',
+                'landmarks_detected': landmarks_detected,
+                'pose_state': pose_state,
+                'pose_angle': pose_angle,
+                'exercise_type': exercise_type
+            }
+        }, status=status.HTTP_200_OK)
             
     except Exception as e:
         return Response({
@@ -337,3 +389,149 @@ def analyze_pose_quality(landmarks, image_shape):
     
     return feedback
 
+
+def detect_squat(landmarks):
+    """
+    检测深蹲动作
+    返回: (state, angle, feedback)
+    state: 'UP' (站立), 'DOWN' (下蹲)
+    """
+    mp_pose = mp.solutions.pose
+    
+    # 获取髋、膝、踝
+    left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
+    left_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value]
+    left_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value]
+    
+    right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
+    right_knee = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value]
+    right_ankle = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value]
+    
+    # 确保关键点可见
+    if (left_hip.visibility < 0.5 or left_knee.visibility < 0.5 or left_ankle.visibility < 0.5):
+        return None, 0, "未检测到完整的腿部，请调整站位"
+
+    # 计算膝盖角度
+    left_angle = calculate_angle(left_hip, left_knee, left_ankle)
+    right_angle = calculate_angle(right_hip, right_knee, right_ankle)
+    
+    avg_angle = (left_angle + right_angle) / 2
+    
+    state = "UNKNOWN"
+    feedback = ""
+    
+    if avg_angle > 150:
+        state = "UP"
+        feedback = "站立准备"
+    elif avg_angle < 130:
+        state = "DOWN"
+        feedback = "下蹲到位"
+    else:
+        state = "TRANSITION"
+        feedback = "动作进行中"
+        
+    return state, avg_angle, feedback
+
+
+def detect_curl(landmarks):
+    """
+    检测哑铃弯举动作 (检测主要活动的手臂)
+    返回: (state, angle, feedback)
+    state: 'DOWN' (放下), 'UP' (举起)
+    """
+    mp_pose = mp.solutions.pose
+    
+    left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
+    left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value]
+    left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value]
+    
+    right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
+    right_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value]
+    right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value]
+    
+    # 判断哪只手臂在运动（可以通过手腕高度或变化幅度，简单起见检测可见度高且角度小的那只）
+    # 这里简单处理：优先检测右臂，如果右臂不可见则检测左臂
+    
+    target_arm = "right"
+    angle = 0
+    
+    if right_shoulder.visibility > 0.5 and right_elbow.visibility > 0.5 and right_wrist.visibility > 0.5:
+        target_arm = "right"
+        angle = calculate_angle(right_shoulder, right_elbow, right_wrist)
+    elif left_shoulder.visibility > 0.5 and left_elbow.visibility > 0.5 and left_wrist.visibility > 0.5:
+        target_arm = "left"
+        angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
+    else:
+        return None, 0, "未检测到手臂"
+
+    state = "UNKNOWN"
+    feedback = ""
+    
+    if angle > 145:
+        state = "DOWN"
+        feedback = "手臂已放下"
+    elif angle < 85: # 放宽判定，小于85度即算到位
+        state = "UP"
+        feedback = "弯举到位"
+    else:
+        state = "TRANSITION"
+        feedback = "弯举中"
+        
+    return state, angle, feedback
+
+
+def detect_press(landmarks):
+    """
+    检测哑铃推肩动作
+    返回: (state, angle, feedback)
+    state: 'DOWN' (放下/准备), 'UP' (推起)
+    """
+    mp_pose = mp.solutions.pose
+    
+    # 获取关键点
+    left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
+    left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value]
+    left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value]
+    
+    right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
+    right_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value]
+    right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value]
+    
+    # 检查可见性
+    left_visible = left_shoulder.visibility > 0.5 and left_elbow.visibility > 0.5 and left_wrist.visibility > 0.5
+    right_visible = right_shoulder.visibility > 0.5 and right_elbow.visibility > 0.5 and right_wrist.visibility > 0.5
+    
+    if not left_visible and not right_visible:
+        return None, 0, "未检测到手臂"
+        
+    # 计算角度和位置
+    angles = []
+    
+    # 关键判定：手腕必须高于肩膀 (y坐标更小)
+    # 如果手腕低于肩膀，说明手臂是垂下的，不是推肩姿势
+    
+    if left_visible and left_wrist.y < left_shoulder.y:
+        angles.append(calculate_angle(left_shoulder, left_elbow, left_wrist))
+        
+    if right_visible and right_wrist.y < right_shoulder.y:
+        angles.append(calculate_angle(right_shoulder, right_elbow, right_wrist))
+        
+    if not angles:
+        return None, 0, "请举起双手至肩部以上"
+        
+    avg_angle = sum(angles) / len(angles)
+    
+    state = "UNKNOWN"
+    feedback = ""
+    
+    if avg_angle > 150:
+        state = "UP"
+        feedback = "推举到位"
+    elif avg_angle < 100:
+        state = "DOWN"
+        feedback = "下放到位"
+    else:
+        state = "TRANSITION"
+        feedback = "发力中"
+        
+    return state, avg_angle, feedback
