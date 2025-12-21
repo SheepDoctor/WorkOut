@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import WelcomeView from '../views/WelcomeView.vue'
 import DouyinAnalyzer from '../views/DouyinAnalyzer.vue'
 import Muscle3DViewer from '../views/Muscle3DViewer.vue'
 import AchievementsView from '../views/AchievementsView.vue'
@@ -7,6 +8,11 @@ import AchievementsView from '../views/AchievementsView.vue'
 const routes = [
   {
     path: '/',
+    name: 'Welcome',
+    component: WelcomeView
+  },
+  {
+    path: '/home',
     name: 'Home',
     component: HomeView
   },

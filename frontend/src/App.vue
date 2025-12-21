@@ -20,7 +20,7 @@ export default {
 
     watch(() => route.path, (to, from) => {
       // 根据路由变化方向决定过渡动画
-      const routes = ['/', '/analyzer', '/muscle', '/achievements']
+      const routes = ['/', '/home', '/analyzer', '/muscle', '/achievements']
       const toIndex = routes.indexOf(to)
       const fromIndex = routes.indexOf(from)
       
@@ -37,12 +37,6 @@ export default {
       transitionName
     }
   }
-}
-</script>
-
-<script>
-export default {
-  name: 'App'
 }
 </script>
 

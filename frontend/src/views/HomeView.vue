@@ -178,7 +178,7 @@
                           </div>
                           <div v-else class="mb-6"></div>
                           <div class="flex items-center gap-6">
-                              <div class="flex items-center gap-3 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 px-4 py-2 rounded-2xl border border-cyan-400/20 backdrop-blur-sm shadow-xl">
+                              <div class="flex items-center gap-3 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 px-4 py-2 rounded-2xl border border-cyan-400/20 backdrop-blur-sm shadow-xl relative group">
                                   <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/30 to-blue-500/30 flex items-center justify-center shadow-lg shadow-cyan-500/20">
                                       <i class="fa-solid fa-layer-group text-cyan-300 text-xs"></i>
                                   </div>
@@ -186,6 +186,14 @@
                                       <span class="text-[10px] text-slate-500 uppercase font-bold">进度</span>
                                       <span class="text-sm font-bold text-white">第 {{ currentExercise.current_sets }} <span class="text-slate-500 font-normal">/ {{ currentExercise.total_sets }} 组</span></span>
                                   </div>
+                                  <!-- 重置按钮 -->
+                                  <button 
+                                      v-if="currentExercise.current_sets > 0"
+                                      @click="resetCurrentExercise"
+                                      class="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-amber-500/80 to-orange-500/80 hover:from-amber-400 hover:to-orange-400 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-amber-500/50 hover:shadow-amber-400/60 hover:scale-110"
+                                      title="重置训练">
+                                      <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                                  </button>
                               </div>
                               <div class="flex items-center gap-3 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 px-4 py-2 rounded-2xl border border-emerald-400/20 backdrop-blur-sm shadow-xl">
                                   <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -1336,6 +1344,17 @@ export default {
       }
     };
 
+    const resetCurrentExercise = async () => {
+      if (!currentExercise.value) return;
+      if (!confirm('确定要重置当前动作的训练进度吗？已训练组数将清零。')) return;
+      
+      // 重置当前动作的已训练组数
+      currentExercise.value.current_sets = 0;
+      
+      // 同步到后端
+      await syncProgress(currentExercise.value);
+    };
+
     const handleAutoAdvance = () => {
       if (currentIndex.value === exercises.value.length - 1) {
         // 先显示庆祝动画
@@ -1438,7 +1457,7 @@ export default {
       history, showHistory, exerciseHistory,
       cameraActive, analyzing, error, feedback, annotatedImage, reps, poseState, videoElement,
       startCamera, stopCamera, getPoseStateText,
-      incrementProgress, next, prev, parseTips, resetWorkout, exitWorkout,
+      incrementProgress, resetCurrentExercise, next, prev, parseTips, resetWorkout, exitWorkout,
       handleTouchStart, handleTouchEnd, handleVideoUpload,
       fetchHistory, saveCurrentWorkout, loadWorkout, deleteHistoryItem, deleteLog, formatDate,
       editingId, editingTitle, startEdit, cancelEdit, saveEdit,
